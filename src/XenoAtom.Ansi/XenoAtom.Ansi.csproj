@@ -11,7 +11,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Description>.NET library for emitting and parsing ANSI/VT escape sequences (SGR, CSI, OSC 8) with ANSI-aware text utilities.</Description>
+    <Description>Fast, allocation-friendly .NET library to generate, parse, and manipulate ANSI/VT escape sequences (writer, markup, tokenizer, ANSI-aware text utilities).</Description>
     <Copyright>Alexandre Mutel</Copyright>
     <NeutralLanguage>en-US</NeutralLanguage>
     <Authors>Alexandre Mutel</Authors>

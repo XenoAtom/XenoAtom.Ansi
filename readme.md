@@ -2,7 +2,7 @@
 
 <img align="right" width="160px" height="160px" src="https://raw.githubusercontent.com/XenoAtom/XenoAtom.Ansi/main/img/XenoAtom.Ansi.png">
 
-XenoAtom.Ansi is a lightweight and powerful .NET library for working with ANSI/VT escape sequences.
+XenoAtom.Ansi is a fast, allocation-friendly .NET library for building rich ANSI/VT output and processing ANSI text. It helps you emit styled sequences, format markup, tokenize streams, and perform ANSI-aware text operations.
 
 ## ✨ Features
 
