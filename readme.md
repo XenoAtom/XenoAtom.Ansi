@@ -6,10 +6,16 @@ XenoAtom.Ansi is a small .NET library for working with ANSI/VT escape sequences.
 
 ## ✨ Features
 
-- Emit ANSI/VT sequences (SGR colors/styles, cursor/erase ops, OSC 8 hyperlinks)
-- Streaming tokenizer for ANSI/VT input (Text / Control / CSI / OSC / SGR / Unknown)
-- ANSI-aware text utilities (strip, measure, wrap, truncate)
-- Basic palettes (`AnsiColors`, `AnsiPalettes`) for named colors and RGB approximations
+- Emit ANSI/VT sequences with `AnsiWriter` (writes to `TextWriter` or `IBufferWriter<char>`)
+- SGR styling: reset, decorations (bold/dim/italic/underline/etc), basic-16, 256-color, and truecolor RGB (with capability-based downgrading)
+- Minimal style transitions (`WriteStyleTransition`) for live/progress output, with optional “safe mode” behavior via `AnsiCapabilities`
+- Cursor/screen helpers: move/position, save/restore cursor, erase line/display, show/hide cursor, alternate screen, soft reset
+- OSC support for hyperlinks (OSC 8), with configurable terminator (BEL or ST)
+- Streaming ANSI/VT tokenizer (`AnsiTokenizer`) with chunked parsing support
+- Token model for Text, selected controls, ESC, CSI, OSC, decoded SGR, and malformed/unknown sequences (tolerant; never throws)
+- Styled runs parser (`AnsiStyledTextParser`) that interprets SGR + OSC 8 into `AnsiStyle`/hyperlink runs
+- ANSI-aware text utilities (`AnsiText`): strip, visible width measurement (wcwidth), wrap, truncate (optionally preserving ANSI)
+- Palettes (`AnsiColors`, `AnsiPalettes`) for named colors and xterm-like RGB approximations
 - Optional Windows helper to enable Virtual Terminal Processing
 
 ## 📖 User Guide
