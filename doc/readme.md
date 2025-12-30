@@ -3,6 +3,7 @@
 XenoAtom.Ansi is a .NET library for working with ANSI/VT escape sequences:
 
 - Emitting (writing) sequences for styling and a few cursor/screen operations
+- Formatting text using lightweight markup into ANSI output
 - Parsing sequences from a stream into structured tokens
 - ANSI-aware text utilities (strip, measure, wrap, truncate)
 
@@ -110,7 +111,7 @@ For live/progress output, you typically track your current style and emit only t
 var current = AnsiStyle.Default;
 var next = current with { Foreground = AnsiColors.Green };
 
-w.WriteStyleTransition(current, next).Write("OK");
+w.StyleTransition(current, next).Write("OK");
 current = next;
 ```
 
@@ -141,6 +142,35 @@ If `SupportsOsc8` is enabled, you can emit hyperlinks:
 ```csharp
 w.BeginLink("https://example.com").Write("click here").EndLink();
 ```
+
+## Markup with `AnsiMarkup`
+
+If you prefer authoring styled output as a single string, `AnsiMarkup` can parse a simple markup syntax and emit the corresponding ANSI sequences (using `AnsiWriter` under the hood).
+
+```csharp
+var s = AnsiMarkup.Render("[bold yellow on blue]Warning[/] disk is almost full");
+```
+
+Interpolated values are escaped automatically (so user input cannot inject markup tags):
+
+```csharp
+var userInput = "[red]not actually red[/]";
+var s = AnsiMarkup.Render($"[red]{userInput}[/]");
+```
+
+### Tag syntax
+
+- Tags are written as `[ ... ]` and can be nested.
+- Close the most recent tag with `[/]`.
+- Escape literal brackets with `[[` and `]]` (e.g. `AnsiMarkup.Render("a[[b]]")` renders `a[b]`).
+
+### Supported styles
+
+- Decorations: `bold`, `dim`, `italic`, `underline`, `blink`, `invert`, `hidden`, `strikethrough`
+- Foreground colors: `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, `gray`/`grey`, and `bright*` variants (e.g. `brightred`, `bright-red`)
+- Background colors: `on <color>`, `bg:<color>`, or `bg=<color>`
+- 256-color indexed: `0..255` (foreground), `bg:0..255` (background)
+- Truecolor: `#RRGGBB` or `rgb(r,g,b)` (foreground), and `bg:#RRGGBB` (background)
 
 ## Parsing input with `AnsiTokenizer`
 
@@ -203,14 +233,6 @@ var truncated = AnsiText.Truncate("hello world", width: 5);  // "hell…"
 var rgb = AnsiPalettes.GetBasic16Rgb(AnsiColors.Red.Index); // (R,G,B) approximation
 ```
 
-## Windows VT enabling (optional)
-
-On Windows console hosts that require it, you can opt-in to enabling VT processing:
-
-```csharp
-var result = XenoAtom.Ansi.Platform.WindowsConsole.TryEnableVirtualTerminalProcessing();
-```
-
 ## Appendix: Supported ANSI/VT sequences
 
 This section describes what XenoAtom.Ansi explicitly supports for **writing** (emitting) and **reading** (tokenizing/decoding).
@@ -233,7 +255,7 @@ This section describes what XenoAtom.Ansi explicitly supports for **writing** (e
 | `Background(AnsiColor.Indexed256(0..255))` | `ESC[48;5;<n>m` | 256-color indexed |
 | `Background(AnsiColor.Rgb(r,g,b))` | `ESC[48;2;<r>;<g>;<b>m` | May downgrade based on `AnsiCapabilities.ColorLevel` |
 | `Style(AnsiStyle)` | SGR sequence(s) | Applies a style starting from the default style |
-| `WriteStyleTransition(from,to,...)` | SGR sequence(s) | Minimal delta; more aggressive output when `AnsiCapabilities.SafeMode` is `true` |
+| `StyleTransition(from,to,...)` | SGR sequence(s) | Minimal delta; more aggressive output when `AnsiCapabilities.SafeMode` is `true` |
 
 Decoration parameters used by `Decorate(...)` / `Undecorate(...)`:
 

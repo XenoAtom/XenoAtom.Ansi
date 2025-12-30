@@ -200,7 +200,7 @@ public static class AnsiText
                 currentLink = run.Hyperlink;
             }
 
-            writer.WriteStyleTransition(currentStyle, run.Style);
+            writer.StyleTransition(currentStyle, run.Style);
             currentStyle = run.Style;
             writer.Write(slice);
             remainingAnsi -= used;
@@ -436,7 +436,7 @@ public static class AnsiText
                 currentLink = run.Hyperlink;
             }
 
-            writer.WriteStyleTransition(currentStyle, run.Style);
+            writer.StyleTransition(currentStyle, run.Style);
             currentStyle = run.Style;
             writer.Write(run.Text);
         }

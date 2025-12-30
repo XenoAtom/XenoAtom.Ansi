@@ -4,7 +4,7 @@
 
 using System.Buffers;
 using System.Globalization;
-using XenoAtom.Ansi.Internal;
+using XenoAtom.Ansi.Helpers;
 
 namespace XenoAtom.Ansi;
 
@@ -201,7 +201,7 @@ public class AnsiWriter
     /// </summary>
     /// <param name="style">The style to apply.</param>
     /// <returns>This writer, for fluent chaining.</returns>
-    public AnsiWriter Style(AnsiStyle style) => WriteStyleTransition(AnsiStyle.Default, style.ResolveMissingFrom(AnsiStyle.Default));
+    public AnsiWriter Style(AnsiStyle style) => StyleTransition(AnsiStyle.Default, style.ResolveMissingFrom(AnsiStyle.Default));
 
     /// <summary>
     /// Emits a minimal SGR sequence that transitions from one style to another.
@@ -209,7 +209,7 @@ public class AnsiWriter
     /// <param name="from">The current style.</param>
     /// <param name="to">The desired style.</param>
     /// <returns>This writer, for fluent chaining.</returns>
-    public AnsiWriter WriteStyleTransition(AnsiStyle from, AnsiStyle to) => WriteStyleTransition(from, to, Capabilities);
+    public AnsiWriter StyleTransition(AnsiStyle from, AnsiStyle to) => StyleTransition(from, to, Capabilities);
 
     /// <summary>
     /// Emits a minimal SGR sequence that transitions from one style to another using the specified capabilities.
@@ -218,7 +218,7 @@ public class AnsiWriter
     /// <param name="to">The desired style.</param>
     /// <param name="capabilities">Capability knobs influencing emitted output.</param>
     /// <returns>This writer, for fluent chaining.</returns>
-    public AnsiWriter WriteStyleTransition(AnsiStyle from, AnsiStyle to, AnsiCapabilities capabilities)
+    public AnsiWriter StyleTransition(AnsiStyle from, AnsiStyle to, AnsiCapabilities capabilities)
     {
         if (!capabilities.AnsiEnabled)
         {

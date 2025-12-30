@@ -2,21 +2,27 @@
 
 <img align="right" width="160px" height="160px" src="https://raw.githubusercontent.com/XenoAtom/XenoAtom.Ansi/main/img/XenoAtom.Ansi.png">
 
-XenoAtom.Ansi is a small .NET library for working with ANSI/VT escape sequences.
+XenoAtom.Ansi is a lightweight and powerful .NET library for working with ANSI/VT escape sequences.
 
 ## ✨ Features
 
-- Emit ANSI/VT sequences with `AnsiWriter` (writes to `TextWriter` or `IBufferWriter<char>`)
-- SGR styling: reset, decorations (bold/dim/italic/underline/etc), basic-16, 256-color, and truecolor RGB (with capability-based downgrading)
-- Minimal style transitions (`WriteStyleTransition`) for live/progress output, with optional “safe mode” behavior via `AnsiCapabilities`
-- Cursor/screen helpers: move/position, save/restore cursor, erase line/display, show/hide cursor, alternate screen, soft reset
-- OSC support for hyperlinks (OSC 8), with configurable terminator (BEL or ST)
-- Streaming ANSI/VT tokenizer (`AnsiTokenizer`) with chunked parsing support
-- Token model for Text, selected controls, ESC, CSI, OSC, decoded SGR, and malformed/unknown sequences (tolerant; never throws)
-- Styled runs parser (`AnsiStyledTextParser`) that interprets SGR + OSC 8 into `AnsiStyle`/hyperlink runs
-- ANSI-aware text utilities (`AnsiText`): strip, visible width measurement (wcwidth), wrap, truncate (optionally preserving ANSI)
-- Palettes (`AnsiColors`, `AnsiPalettes`) for named colors and xterm-like RGB approximations
-- Optional Windows helper to enable Virtual Terminal Processing
+- `net8.0`+ library and NativeAOT ready
+- Fast, allocation-friendly APIs
+- **Rendering / Emitting**
+  - `AnsiWriter` fluent API (writes to `TextWriter` or `IBufferWriter<char>`)
+  - `AnsiMarkup` for markup strings, including interpolated strings (formatted values are escaped)
+  - SGR styling: colors (basic-16, 256-color, truecolor RGB), decorations (bold/dim/italic/underline/etc), reset
+  - Capability-aware output (`AnsiCapabilities`) including color downgrading and optional safe-mode behavior
+  - Cursor/screen helpers: move/position, save/restore cursor, erase line/display, show/hide cursor, alternate screen, soft reset
+  - OSC 8 hyperlinks with configurable terminator (BEL or ST)
+- **Parsing**
+  - Streaming ANSI/VT tokenizer (`AnsiTokenizer`) with chunked parsing support
+  - Token model for Text, selected controls, ESC, CSI, OSC, decoded SGR, and malformed/unknown sequences (tolerant; never throws)
+  - Styled runs parser (`AnsiStyledTextParser`) that interprets SGR + OSC 8 into `AnsiStyle`/hyperlink runs
+- **Text Utilities**
+  - ANSI-aware text helpers (`AnsiText`): strip, visible width measurement (wcwidth), wrap, truncate (optionally preserving ANSI)
+- **Color Helpers**
+  - Palettes (`AnsiColors`, `AnsiPalettes`) for named colors and xterm-like RGB approximations
 
 ## 📖 User Guide
 

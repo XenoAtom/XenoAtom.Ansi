@@ -4,7 +4,7 @@
 
 using System.Buffers;
 
-namespace XenoAtom.Ansi.Internal;
+namespace XenoAtom.Ansi.Helpers;
 
 internal sealed class PooledCharBuffer : IDisposable
 {

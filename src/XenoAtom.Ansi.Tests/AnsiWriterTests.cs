@@ -307,10 +307,10 @@ public class AnsiWriterTests
         var from = new AnsiStyle { Foreground = AnsiColor.Basic16(1), Background = AnsiColor.Default, Decorations = AnsiDecorations.Bold };
         var to = new AnsiStyle { Foreground = null, Background = null, Decorations = AnsiDecorations.None };
 
-        var output = AnsiRoundTrip.Emit(w => w.WriteStyleTransition(from, to));
+        var output = AnsiRoundTrip.Emit(w => w.StyleTransition(from, to));
         Assert.AreEqual("\x1b[22m", output);
 
-        var sgr = (SgrToken)AnsiRoundTrip.EmitAndTokenize(w => w.WriteStyleTransition(from, to)).Single();
+        var sgr = (SgrToken)AnsiRoundTrip.EmitAndTokenize(w => w.StyleTransition(from, to)).Single();
         CollectionAssert.AreEqual(
             new[]
             {
