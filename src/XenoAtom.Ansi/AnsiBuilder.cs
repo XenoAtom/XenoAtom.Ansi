@@ -42,6 +42,16 @@ public sealed class AnsiBuilder : IBufferWriter<char>, IDisposable
     /// </summary>
     public void Clear() => _length = 0;
 
+    /// <summary>
+    /// Returns a span representing the current contents of the buffer without performing safety checks.
+    /// </summary>
+    /// <returns>A span of chars that provides direct access to the buffer's contents up to the current length.</returns>
+    public Span<char> UnsafeAsSpan()
+    {
+        EnsureNotDisposed();
+        return _buffer.AsSpan(0, _length);
+    }
+
     /// <inheritdoc />
     public override string ToString()
     {
