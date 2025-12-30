@@ -319,4 +319,56 @@ public class AnsiWriterTests
             },
             sgr.Operations);
     }
+
+    [TestMethod]
+    public void AliasMethods_EmitExpectedSequences()
+    {
+        var tokens = AnsiRoundTrip.EmitAndTokenize(w =>
+        {
+            w.Up(2);
+            w.Down(3);
+            w.Forward(4);
+            w.Back(5);
+            w.MoveTo(1, 2);
+            w.EraseLine(2);
+            w.EraseDisplay(1);
+            w.CursorVisible(false);
+            w.AlternateScreen(true);
+        });
+
+        Assert.HasCount(9, tokens);
+        Assert.AreEqual('A', ((CsiToken)tokens[0]).Final);
+        Assert.AreEqual('B', ((CsiToken)tokens[1]).Final);
+        Assert.AreEqual('C', ((CsiToken)tokens[2]).Final);
+        Assert.AreEqual('D', ((CsiToken)tokens[3]).Final);
+        Assert.AreEqual('H', ((CsiToken)tokens[4]).Final);
+        Assert.AreEqual('K', ((CsiToken)tokens[5]).Final);
+        Assert.AreEqual('J', ((CsiToken)tokens[6]).Final);
+        Assert.AreEqual('l', ((CsiToken)tokens[7]).Final);
+        Assert.AreEqual('h', ((CsiToken)tokens[8]).Final);
+    }
+
+    [TestMethod]
+    public void Foreground_Rgb_DowngradesTo256_WhenCapabilities256()
+    {
+        var caps = AnsiCapabilities.Default with { ColorLevel = AnsiColorLevel.Colors256 };
+        var tokens = AnsiRoundTrip.EmitAndTokenize(w => w.Foreground(AnsiColor.Rgb(255, 128, 0)), caps);
+
+        var sgr = (SgrToken)tokens.Single();
+        var op = sgr.Operations.Single();
+        Assert.AreEqual(AnsiSgrOpKind.SetForeground, op.Kind);
+        Assert.AreEqual(AnsiColorKind.Indexed256, op.Color.Kind);
+    }
+
+    [TestMethod]
+    public void Foreground_Rgb_DowngradesTo16_WhenCapabilities16()
+    {
+        var caps = AnsiCapabilities.Default with { ColorLevel = AnsiColorLevel.Colors16 };
+        var tokens = AnsiRoundTrip.EmitAndTokenize(w => w.Foreground(AnsiColor.Rgb(255, 0, 0)), caps);
+
+        var sgr = (SgrToken)tokens.Single();
+        var op = sgr.Operations.Single();
+        Assert.AreEqual(AnsiSgrOpKind.SetForeground, op.Kind);
+        Assert.AreEqual(AnsiColorKind.Basic16, op.Color.Kind);
+    }
 }

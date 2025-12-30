@@ -27,5 +27,27 @@ public class AnsiPaletteTests
         Assert.AreEqual((byte)255, AnsiPalettes.GetXterm256Rgb(231).G);
         Assert.AreEqual((byte)255, AnsiPalettes.GetXterm256Rgb(231).B);
     }
+
+    [TestMethod]
+    public void AnsiPalettes_Basic16Rgb_HasKnownValues()
+    {
+        // Basic 16 palette is xterm-like defaults.
+        Assert.AreEqual((byte)0, AnsiPalettes.GetBasic16Rgb(0).R);
+        Assert.AreEqual((byte)0, AnsiPalettes.GetBasic16Rgb(0).G);
+        Assert.AreEqual((byte)0, AnsiPalettes.GetBasic16Rgb(0).B);
+
+        Assert.AreEqual((byte)255, AnsiPalettes.GetBasic16Rgb(15).R);
+        Assert.AreEqual((byte)255, AnsiPalettes.GetBasic16Rgb(15).G);
+        Assert.AreEqual((byte)255, AnsiPalettes.GetBasic16Rgb(15).B);
+    }
+
+    [TestMethod]
+    public void AnsiPalettes_ThrowsOnOutOfRangeIndices()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => AnsiPalettes.GetBasic16Rgb(-1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => AnsiPalettes.GetBasic16Rgb(16));
+        Assert.Throws<ArgumentOutOfRangeException>(() => AnsiPalettes.GetXterm256Rgb(-1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => AnsiPalettes.GetXterm256Rgb(256));
+    }
 }
 
