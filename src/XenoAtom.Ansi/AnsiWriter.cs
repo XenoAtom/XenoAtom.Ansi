@@ -3,6 +3,7 @@
 // See license.txt file in the project root for full license information.
 
 using System.Buffers;
+using System.Globalization;
 using XenoAtom.Ansi.Internal;
 
 namespace XenoAtom.Ansi;
@@ -20,13 +21,14 @@ namespace XenoAtom.Ansi;
 /// </list>
 /// This library is not a terminal emulator; it only emits the sequences required by rich-output renderers.
 /// </remarks>
-public readonly struct AnsiWriter
+public class AnsiWriter
 {
     private readonly IBufferWriter<char>? _bufferWriter;
     private readonly TextWriter? _textWriter;
+    private readonly List<int> _codes;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="AnsiWriter"/> struct that writes to an <see cref="IBufferWriter{T}"/>.
+    /// Initializes a new instance of the <see cref="AnsiWriter"/> class that writes to an <see cref="IBufferWriter{T}"/>.
     /// </summary>
     /// <param name="bufferWriter">The output sink.</param>
     /// <param name="capabilities">Output capability knobs.</param>
@@ -34,11 +36,12 @@ public readonly struct AnsiWriter
     {
         _bufferWriter = bufferWriter ?? throw new ArgumentNullException(nameof(bufferWriter));
         _textWriter = null;
+        _codes = new List<int>(32);
         Capabilities = capabilities == default ? AnsiCapabilities.Default : capabilities;
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="AnsiWriter"/> struct that writes to a <see cref="TextWriter"/>.
+    /// Initializes a new instance of the <see cref="AnsiWriter"/> class that writes to a <see cref="TextWriter"/>.
     /// </summary>
     /// <param name="textWriter">The output sink.</param>
     /// <param name="capabilities">Output capability knobs.</param>
@@ -46,6 +49,7 @@ public readonly struct AnsiWriter
     {
         _bufferWriter = null;
         _textWriter = textWriter ?? throw new ArgumentNullException(nameof(textWriter));
+        _codes = new List<int>(32);
         Capabilities = capabilities == default ? AnsiCapabilities.Default : capabilities;
     }
 
@@ -96,6 +100,52 @@ public readonly struct AnsiWriter
         }
 
         return Write(text.AsSpan());
+    }
+
+    private void WriteChar(char ch)
+    {
+        if (_textWriter is not null)
+        {
+            _textWriter.Write(ch);
+            return;
+        }
+
+        if (_bufferWriter is null)
+        {
+            throw new InvalidOperationException("AnsiWriter was not initialized with an output.");
+        }
+
+        var span = _bufferWriter.GetSpan(1);
+        span[0] = ch;
+        _bufferWriter.Advance(1);
+    }
+
+    private void WriteInt(int value)
+    {
+        if (_textWriter is not null)
+        {
+            Span<char> buffer = stackalloc char[11];
+            if (!value.TryFormat(buffer, out var charsWritten, provider: CultureInfo.InvariantCulture))
+            {
+                throw new InvalidOperationException("Failed to format an integer.");
+            }
+
+            _textWriter.Write(buffer[..charsWritten]);
+            return;
+        }
+
+        if (_bufferWriter is null)
+        {
+            throw new InvalidOperationException("AnsiWriter was not initialized with an output.");
+        }
+
+        var span = _bufferWriter.GetSpan(11);
+        if (!value.TryFormat(span, out var written))
+        {
+            throw new InvalidOperationException("Failed to format an integer.");
+        }
+
+        _bufferWriter.Advance(written);
     }
 
     /// <summary>
@@ -178,20 +228,32 @@ public readonly struct AnsiWriter
         var fromResolved = ResolveState(from, AnsiStyle.Default);
         var toResolved = ResolveState(to, fromResolved);
 
+        _codes.Clear();
+
         if (capabilities.SafeMode)
         {
-            WriteSgr(BuildSgrForStyle(toResolved, capabilities));
+            _codes.Add(0);
+            AddDecorationEnableCodes(toResolved.Decorations, _codes);
+            if (toResolved.Foreground is { } fg)
+            {
+                AddColorCodes(isForeground: true, fg, capabilities, _codes);
+            }
+            if (toResolved.Background is { } bg)
+            {
+                AddColorCodes(isForeground: false, bg, capabilities, _codes);
+            }
+
+            WriteCsiSgrCodes(_codes);
             return this;
         }
 
-        var codes = new List<int>(16);
-        BuildSgrTransitionCodes(fromResolved, toResolved, capabilities, codes);
-        if (codes.Count == 0)
+        BuildSgrTransitionCodes(fromResolved, toResolved, capabilities, _codes);
+        if (_codes.Count == 0)
         {
             return this;
         }
 
-        WriteCsiSgrCodes(codes);
+        WriteCsiSgrCodes(_codes);
         return this;
     }
 
@@ -208,19 +270,19 @@ public readonly struct AnsiWriter
             return this;
         }
 
-        var codes = new List<int>(8);
+        _codes.Clear();
         if (enabled)
         {
-            AddDecorationEnableCodes(decorations, codes);
+            AddDecorationEnableCodes(decorations, _codes);
         }
         else
         {
-            AddDecorationDisableCodes(decorations, codes);
+            AddDecorationDisableCodes(decorations, _codes);
         }
 
-        if (codes.Count > 0)
+        if (_codes.Count > 0)
         {
-            WriteCsiSgrCodes(codes);
+            WriteCsiSgrCodes(_codes);
         }
 
         return this;
@@ -308,10 +370,10 @@ public readonly struct AnsiWriter
         }
 
         Write("\x1b[");
-        Write(row.ToString());
-        Write(";");
-        Write(col.ToString());
-        Write("H");
+        WriteInt(row);
+        WriteChar(';');
+        WriteInt(col);
+        WriteChar('H');
         return this;
     }
 
@@ -570,13 +632,13 @@ public readonly struct AnsiWriter
         if (allowZeroToOmit && n == 0)
         {
             Write("\x1b[");
-            Write(final.ToString());
+            WriteChar(final);
             return;
         }
 
         Write("\x1b[");
-        Write(n == 0 ? "1" : n.ToString());
-        Write(final.ToString());
+        WriteInt(n == 0 ? 1 : n);
+        WriteChar(final);
     }
 
     private void WriteSgr(string parameters)
@@ -598,28 +660,12 @@ public readonly struct AnsiWriter
         {
             if (i > 0)
             {
-                Write(";");
+                WriteChar(';');
             }
 
-            Write(codes[i].ToString());
+            WriteInt(codes[i]);
         }
-        Write("m");
-    }
-
-    private string BuildSgrForStyle(AnsiStyle style, AnsiCapabilities capabilities)
-    {
-        var codes = new List<int>(16) { 0 };
-        AddDecorationEnableCodes(style.Decorations, codes);
-        if (style.Foreground is { } fg)
-        {
-            AddColorCodes(isForeground: true, fg, capabilities, codes);
-        }
-        if (style.Background is { } bg)
-        {
-            AddColorCodes(isForeground: false, bg, capabilities, codes);
-        }
-
-        return string.Join(";", codes);
+        WriteChar('m');
     }
 
     private static AnsiStyle ResolveState(AnsiStyle style, AnsiStyle fallback)
@@ -670,11 +716,11 @@ public readonly struct AnsiWriter
 
     private void WriteColorSgr(bool isForeground, AnsiColor color)
     {
-        var codes = new List<int>(8);
-        AddColorCodes(isForeground, color, Capabilities, codes);
-        if (codes.Count > 0)
+        _codes.Clear();
+        AddColorCodes(isForeground, color, Capabilities, _codes);
+        if (_codes.Count > 0)
         {
-            WriteCsiSgrCodes(codes);
+            WriteCsiSgrCodes(_codes);
         }
     }
 
