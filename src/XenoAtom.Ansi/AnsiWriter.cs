@@ -32,12 +32,12 @@ public class AnsiWriter
     /// </summary>
     /// <param name="bufferWriter">The output sink.</param>
     /// <param name="capabilities">Output capability knobs.</param>
-    public AnsiWriter(IBufferWriter<char> bufferWriter, AnsiCapabilities capabilities = default)
+    public AnsiWriter(IBufferWriter<char> bufferWriter, AnsiCapabilities? capabilities = null)
     {
         _bufferWriter = bufferWriter ?? throw new ArgumentNullException(nameof(bufferWriter));
         _textWriter = null;
         _codes = new List<int>(32);
-        Capabilities = capabilities == default ? AnsiCapabilities.Default : capabilities;
+        Capabilities = capabilities ?? AnsiCapabilities.Default;
     }
 
     /// <summary>
@@ -45,18 +45,18 @@ public class AnsiWriter
     /// </summary>
     /// <param name="textWriter">The output sink.</param>
     /// <param name="capabilities">Output capability knobs.</param>
-    public AnsiWriter(TextWriter textWriter, AnsiCapabilities capabilities = default)
+    public AnsiWriter(TextWriter textWriter, AnsiCapabilities? capabilities = null)
     {
         _bufferWriter = null;
         _textWriter = textWriter ?? throw new ArgumentNullException(nameof(textWriter));
         _codes = new List<int>(32);
-        Capabilities = capabilities == default ? AnsiCapabilities.Default : capabilities;
+        Capabilities = capabilities ?? AnsiCapabilities.Default;
     }
 
     /// <summary>
     /// Gets the capabilities used by this writer.
     /// </summary>
-    public readonly AnsiCapabilities Capabilities;
+    public AnsiCapabilities Capabilities { get; }
 
     /// <summary>
     /// Writes the specified text verbatim.

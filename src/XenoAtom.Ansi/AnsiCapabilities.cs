@@ -12,7 +12,7 @@ namespace XenoAtom.Ansi;
 /// some support 256-color indexed palettes, and some support truecolor (24-bit RGB). Some hosts also disable
 /// ANSI interpretation entirely.
 /// </remarks>
-public readonly record struct AnsiCapabilities
+public record AnsiCapabilities
 {
     /// <summary>
     /// Gets a set of defaults intended for modern terminals.
