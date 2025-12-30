@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <TargetFramework>net8.0</TargetFramework>
@@ -18,7 +18,7 @@
     <PackageTags>ansi;vt100;ecma-48;iso-6429;terminal;console;osc8</PackageTags>
     <PackageReadmeFile>readme.md</PackageReadmeFile>
     <PackageIcon>XenoAtom.Ansi.png</PackageIcon>
-    <PackageProjectUrl>https://github.com/xoofx/XenoAtom.Ansi</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/XenoAtom/XenoAtom.Ansi</PackageProjectUrl>
     <PackageLicenseExpression>BSD-2-Clause</PackageLicenseExpression>
     <!--Add support for sourcelink-->
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
