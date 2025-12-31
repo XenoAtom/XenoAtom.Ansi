@@ -3,6 +3,7 @@
 // See license.txt file in the project root for full license information.
 
 using System.Buffers;
+using System.Runtime.CompilerServices;
 
 namespace XenoAtom.Ansi;
 
@@ -335,50 +336,130 @@ public sealed class AnsiMarkup
                 continue;
             }
 
-            if (token.Equals("reset".AsSpan(), StringComparison.OrdinalIgnoreCase) ||
-                token.Equals("default".AsSpan(), StringComparison.OrdinalIgnoreCase))
+            // Trie-like dispatch based on the first character. This avoids repeatedly probing the token in several helpers.
+            switch (ToLowerAsciiInvariant(token[0]))
             {
-                nextStyle = AnsiStyle.Default;
-                recognized = true;
-                continue;
+                case 'r':
+                    if (AsciiEqualsIgnoreCase(token, "reset"))
+                    {
+                        nextStyle = AnsiStyle.Default;
+                        recognized = true;
+                        continue;
+                    }
+                    break;
+                case 'd':
+                    if (AsciiEqualsIgnoreCase(token, "default"))
+                    {
+                        nextStyle = AnsiStyle.Default;
+                        recognized = true;
+                        continue;
+                    }
+                    if (AsciiEqualsIgnoreCase(token, "dim"))
+                    {
+                        nextStyle = nextStyle with { Decorations = nextStyle.Decorations | AnsiDecorations.Dim };
+                        recognized = true;
+                        continue;
+                    }
+                    break;
+                case 'b':
+                    // bg:... / bg=...
+                    if (token.Length >= 3 &&
+                        ToLowerAsciiInvariant(token[1]) == 'g' &&
+                        (token[2] == ':' || token[2] == '='))
+                    {
+                        if (!TryParseColorToken(token[3..], out var bgPrefixed))
+                        {
+                            return false;
+                        }
+
+                        nextStyle = nextStyle with { Background = bgPrefixed };
+                        recognized = true;
+                        continue;
+                    }
+
+                    if (AsciiEqualsIgnoreCase(token, "bold"))
+                    {
+                        nextStyle = nextStyle with { Decorations = nextStyle.Decorations | AnsiDecorations.Bold };
+                        recognized = true;
+                        continue;
+                    }
+                    if (AsciiEqualsIgnoreCase(token, "blink"))
+                    {
+                        nextStyle = nextStyle with { Decorations = nextStyle.Decorations | AnsiDecorations.Blink };
+                        recognized = true;
+                        continue;
+                    }
+                    break;
+                case 'f':
+                    // fg:... / fg=...
+                    if (token.Length >= 3 &&
+                        ToLowerAsciiInvariant(token[1]) == 'g' &&
+                        (token[2] == ':' || token[2] == '='))
+                    {
+                        if (!TryParseColorToken(token[3..], out var fgPrefixed))
+                        {
+                            return false;
+                        }
+
+                        nextStyle = nextStyle with { Foreground = fgPrefixed };
+                        recognized = true;
+                        continue;
+                    }
+                    break;
+                case 'o':
+                    if (token.Length == 2 && token[1] is 'n' or 'N')
+                    {
+                        if (!TryReadToken(tag, ref index, out var colorToken) || !TryParseColorToken(colorToken, out var bg))
+                        {
+                            return false;
+                        }
+
+                        nextStyle = nextStyle with { Background = bg };
+                        recognized = true;
+                        continue;
+                    }
+                    break;
+                case 'i':
+                    if (AsciiEqualsIgnoreCase(token, "italic"))
+                    {
+                        nextStyle = nextStyle with { Decorations = nextStyle.Decorations | AnsiDecorations.Italic };
+                        recognized = true;
+                        continue;
+                    }
+                    if (AsciiEqualsIgnoreCase(token, "invert") || AsciiEqualsIgnoreCase(token, "inverse"))
+                    {
+                        nextStyle = nextStyle with { Decorations = nextStyle.Decorations | AnsiDecorations.Invert };
+                        recognized = true;
+                        continue;
+                    }
+                    break;
+                case 'u':
+                    if (AsciiEqualsIgnoreCase(token, "underline"))
+                    {
+                        nextStyle = nextStyle with { Decorations = nextStyle.Decorations | AnsiDecorations.Underline };
+                        recognized = true;
+                        continue;
+                    }
+                    break;
+                case 'h':
+                    if (AsciiEqualsIgnoreCase(token, "hidden"))
+                    {
+                        nextStyle = nextStyle with { Decorations = nextStyle.Decorations | AnsiDecorations.Hidden };
+                        recognized = true;
+                        continue;
+                    }
+                    break;
+                case 's':
+                    if (AsciiEqualsIgnoreCase(token, "strikethrough") || AsciiEqualsIgnoreCase(token, "strike"))
+                    {
+                        nextStyle = nextStyle with { Decorations = nextStyle.Decorations | AnsiDecorations.Strikethrough };
+                        recognized = true;
+                        continue;
+                    }
+                    break;
             }
 
-            if (TryParseDecoration(token, out var decoration))
-            {
-                nextStyle = nextStyle with { Decorations = nextStyle.Decorations | decoration };
-                recognized = true;
-                continue;
-            }
-
-            if (token.Equals("on".AsSpan(), StringComparison.OrdinalIgnoreCase))
-            {
-                if (!TryReadToken(tag, ref index, out var colorToken) || !TryParseColor(colorToken, out var bg))
-                {
-                    return false;
-                }
-
-                nextStyle = nextStyle with { Background = bg };
-                recognized = true;
-                continue;
-            }
-
-            if (TryParsePrefixedColor(token, "bg:".AsSpan(), out var bgPrefixed) ||
-                TryParsePrefixedColor(token, "bg=".AsSpan(), out bgPrefixed))
-            {
-                nextStyle = nextStyle with { Background = bgPrefixed };
-                recognized = true;
-                continue;
-            }
-
-            if (TryParsePrefixedColor(token, "fg:".AsSpan(), out var fgPrefixed) ||
-                TryParsePrefixedColor(token, "fg=".AsSpan(), out fgPrefixed))
-            {
-                nextStyle = nextStyle with { Foreground = fgPrefixed };
-                recognized = true;
-                continue;
-            }
-
-            if (TryParseColor(token, out var fg))
+            if (TryParseColorToken(token, out var fg))
             {
                 nextStyle = nextStyle with { Foreground = fg };
                 recognized = true;
@@ -396,88 +477,33 @@ public sealed class AnsiMarkup
         return true;
     }
 
-    private static bool TryParsePrefixedColor(ReadOnlySpan<char> token, ReadOnlySpan<char> prefix, out AnsiColor color)
+    private static bool TryParseColorToken(ReadOnlySpan<char> token, out AnsiColor color)
     {
-        if (!token.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-        {
-            color = default;
-            return false;
-        }
-
-        return TryParseColor(token[prefix.Length..], out color);
-    }
-
-    private static bool TryParseDecoration(ReadOnlySpan<char> token, out AnsiDecorations decoration)
-    {
-        if (token.Equals("bold".AsSpan(), StringComparison.OrdinalIgnoreCase))
-        {
-            decoration = AnsiDecorations.Bold;
-            return true;
-        }
-        if (token.Equals("dim".AsSpan(), StringComparison.OrdinalIgnoreCase))
-        {
-            decoration = AnsiDecorations.Dim;
-            return true;
-        }
-        if (token.Equals("italic".AsSpan(), StringComparison.OrdinalIgnoreCase))
-        {
-            decoration = AnsiDecorations.Italic;
-            return true;
-        }
-        if (token.Equals("underline".AsSpan(), StringComparison.OrdinalIgnoreCase))
-        {
-            decoration = AnsiDecorations.Underline;
-            return true;
-        }
-        if (token.Equals("blink".AsSpan(), StringComparison.OrdinalIgnoreCase))
-        {
-            decoration = AnsiDecorations.Blink;
-            return true;
-        }
-        if (token.Equals("invert".AsSpan(), StringComparison.OrdinalIgnoreCase) ||
-            token.Equals("inverse".AsSpan(), StringComparison.OrdinalIgnoreCase))
-        {
-            decoration = AnsiDecorations.Invert;
-            return true;
-        }
-        if (token.Equals("hidden".AsSpan(), StringComparison.OrdinalIgnoreCase))
-        {
-            decoration = AnsiDecorations.Hidden;
-            return true;
-        }
-        if (token.Equals("strikethrough".AsSpan(), StringComparison.OrdinalIgnoreCase) ||
-            token.Equals("strike".AsSpan(), StringComparison.OrdinalIgnoreCase))
-        {
-            decoration = AnsiDecorations.Strikethrough;
-            return true;
-        }
-
-        decoration = default;
-        return false;
-    }
-
-    private static bool TryParseColor(ReadOnlySpan<char> token, out AnsiColor color)
-    {
-        token = Trim(token);
         if (token.IsEmpty)
         {
             color = default;
             return false;
         }
 
-        if (TryParseHexRgb(token, out color))
+        // Fast-path based on first character:
+        // - #RRGGBB
+        // - 0..255 (indexed)
+        // - rgb(r,g,b)
+        // - named colors (including bright/light prefixes)
+        var first = token[0];
+        if (first == '#')
         {
-            return true;
+            return TryParseHexRgb(token, out color);
         }
 
-        if (TryParseRgbFunction(token, out color))
+        if ((uint)(first - '0') <= 9)
         {
-            return true;
+            return TryParseIndexed256(token, out color);
         }
 
-        if (TryParseIndexed256(token, out color))
+        if (ToLowerAsciiInvariant(first) == 'r' && AsciiStartsWithIgnoreCase(token, "rgb("))
         {
-            return true;
+            return TryParseRgbFunction(token, out color);
         }
 
         return TryParseNamedColor(token, out color);
@@ -486,7 +512,7 @@ public sealed class AnsiMarkup
     private static bool TryParseRgbFunction(ReadOnlySpan<char> token, out AnsiColor color)
     {
         // rgb(r,g,b)
-        if (!token.StartsWith("rgb(".AsSpan(), StringComparison.OrdinalIgnoreCase) || token[^1] != ')')
+        if (!AsciiStartsWithIgnoreCase(token, "rgb(") || token[^1] != ')')
         {
             color = default;
             return false;
@@ -641,49 +667,58 @@ public sealed class AnsiMarkup
 
     private static bool TryParseNamedColor(ReadOnlySpan<char> token, out AnsiColor color)
     {
-        if (token.Equals("default".AsSpan(), StringComparison.OrdinalIgnoreCase))
-        {
-            color = AnsiColor.Default;
-            return true;
-        }
-
-        if (token.Equals("gray".AsSpan(), StringComparison.OrdinalIgnoreCase) ||
-            token.Equals("grey".AsSpan(), StringComparison.OrdinalIgnoreCase))
-        {
-            color = AnsiColors.BrightBlack;
-            return true;
-        }
-
         var isBright = false;
-        if (token.StartsWith("bright".AsSpan(), StringComparison.OrdinalIgnoreCase))
+        if (token.IsEmpty)
         {
-            isBright = true;
-            token = token["bright".Length..];
-            token = TrimSeparators(token);
-        }
-        else if (token.StartsWith("light".AsSpan(), StringComparison.OrdinalIgnoreCase))
-        {
-            isBright = true;
-            token = token["light".Length..];
-            token = TrimSeparators(token);
+            color = default;
+            return false;
         }
 
-        var baseIndex = token switch
+        // Trie-like dispatch based on first character.
+        switch (ToLowerAsciiInvariant(token[0]))
         {
-            _ when token.Equals("black".AsSpan(), StringComparison.OrdinalIgnoreCase) => 0,
-            _ when token.Equals("red".AsSpan(), StringComparison.OrdinalIgnoreCase) => 1,
-            _ when token.Equals("green".AsSpan(), StringComparison.OrdinalIgnoreCase) => 2,
-            _ when token.Equals("yellow".AsSpan(), StringComparison.OrdinalIgnoreCase) => 3,
-            _ when token.Equals("blue".AsSpan(), StringComparison.OrdinalIgnoreCase) => 4,
-            _ when token.Equals("magenta".AsSpan(), StringComparison.OrdinalIgnoreCase) => 5,
-            _ when token.Equals("purple".AsSpan(), StringComparison.OrdinalIgnoreCase) => 5,
-            _ when token.Equals("cyan".AsSpan(), StringComparison.OrdinalIgnoreCase) => 6,
-            _ when token.Equals("aqua".AsSpan(), StringComparison.OrdinalIgnoreCase) => 6,
-            _ when token.Equals("white".AsSpan(), StringComparison.OrdinalIgnoreCase) => 7,
-            _ => -1
-        };
+            case 'd':
+                if (AsciiEqualsIgnoreCase(token, "default"))
+                {
+                    color = AnsiColor.Default;
+                    return true;
+                }
+                break;
+            case 'g':
+                if (AsciiEqualsIgnoreCase(token, "gray") || AsciiEqualsIgnoreCase(token, "grey"))
+                {
+                    color = AnsiColors.BrightBlack;
+                    return true;
+                }
+                break;
+        }
 
-        if (baseIndex < 0)
+        // Support "bright-*" / "light-*" prefixes.
+        switch (ToLowerAsciiInvariant(token[0]))
+        {
+            case 'b':
+                if (AsciiStartsWithIgnoreCase(token, "bright"))
+                {
+                    isBright = true;
+                    token = TrimSeparators(token["bright".Length..]);
+                }
+                break;
+            case 'l':
+                if (AsciiStartsWithIgnoreCase(token, "light"))
+                {
+                    isBright = true;
+                    token = TrimSeparators(token["light".Length..]);
+                }
+                break;
+        }
+
+        if (token.IsEmpty)
+        {
+            color = default;
+            return false;
+        }
+
+        if (!TryGetBasicColorIndex(token, out var baseIndex))
         {
             color = default;
             return false;
@@ -691,6 +726,89 @@ public sealed class AnsiMarkup
 
         color = AnsiColor.Basic16(isBright ? baseIndex + 8 : baseIndex);
         return true;
+    }
+
+    private static bool TryGetBasicColorIndex(ReadOnlySpan<char> token, out int baseIndex)
+    {
+        baseIndex = -1;
+        if (token.IsEmpty)
+        {
+            return false;
+        }
+
+        switch (ToLowerAsciiInvariant(token[0]))
+        {
+            case 'b':
+                if (AsciiEqualsIgnoreCase(token, "black"))
+                {
+                    baseIndex = 0;
+                    return true;
+                }
+                if (AsciiEqualsIgnoreCase(token, "blue"))
+                {
+                    baseIndex = 4;
+                    return true;
+                }
+                return false;
+            case 'r':
+                if (AsciiEqualsIgnoreCase(token, "red"))
+                {
+                    baseIndex = 1;
+                    return true;
+                }
+                return false;
+            case 'g':
+                if (AsciiEqualsIgnoreCase(token, "green"))
+                {
+                    baseIndex = 2;
+                    return true;
+                }
+                return false;
+            case 'y':
+                if (AsciiEqualsIgnoreCase(token, "yellow"))
+                {
+                    baseIndex = 3;
+                    return true;
+                }
+                return false;
+            case 'm':
+                if (AsciiEqualsIgnoreCase(token, "magenta"))
+                {
+                    baseIndex = 5;
+                    return true;
+                }
+                return false;
+            case 'p':
+                if (AsciiEqualsIgnoreCase(token, "purple"))
+                {
+                    baseIndex = 5;
+                    return true;
+                }
+                return false;
+            case 'c':
+                if (AsciiEqualsIgnoreCase(token, "cyan"))
+                {
+                    baseIndex = 6;
+                    return true;
+                }
+                return false;
+            case 'a':
+                if (AsciiEqualsIgnoreCase(token, "aqua"))
+                {
+                    baseIndex = 6;
+                    return true;
+                }
+                return false;
+            case 'w':
+                if (AsciiEqualsIgnoreCase(token, "white"))
+                {
+                    baseIndex = 7;
+                    return true;
+                }
+                return false;
+            default:
+                return false;
+        }
     }
 
     private static bool TryReadToken(ReadOnlySpan<char> text, ref int index, out ReadOnlySpan<char> token)
@@ -768,5 +886,15 @@ public sealed class AnsiMarkup
         return text[start..];
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsWhitespace(char c) => c == ' ' || c == '\t' || c == '\r' || c == '\n';
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool AsciiEqualsIgnoreCase(ReadOnlySpan<char> token, string lowerAsciiLiteral) => token.Equals(lowerAsciiLiteral.AsSpan(), StringComparison.OrdinalIgnoreCase);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool AsciiStartsWithIgnoreCase(ReadOnlySpan<char> token, string lowerAsciiLiteral) => token.StartsWith(lowerAsciiLiteral.AsSpan(), StringComparison.OrdinalIgnoreCase);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static char ToLowerAsciiInvariant(char c) => (uint)(c - 'A') <= ('Z' - 'A') ? (char)(c | 0x20) : c;
 }
