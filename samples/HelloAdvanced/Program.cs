@@ -65,12 +65,41 @@ try
     }
     writer.Reset().Write("\n");
 
-    markup.Write("\n[bold]Decorations[/]\n");
+    markup.Write("\n[bold]Decorations (SGR)[/]\n");
     writer
-        .Decorate(AnsiDecorations.Bold).Write("  bold\n").Undecorate(AnsiDecorations.Bold)
-        .Write("  ").Decorate(AnsiDecorations.Underline).Write("underline\n").Undecorate(AnsiDecorations.Underline)
-        .Decorate(AnsiDecorations.Italic).Write("  italic\n").Undecorate(AnsiDecorations.Italic)
-        .Reset();
+        .Write("  ")
+        .Decorate(AnsiDecorations.Bold).Write("bold").Reset()
+        .Write(" / ")
+        .Decorate(AnsiDecorations.Dim).Write("dim").Reset()
+        .Write(" / ")
+        .Decorate(AnsiDecorations.Italic).Write("italic").Reset()
+        .Write(" / ")
+        .Decorate(AnsiDecorations.Underline).Write("underline").Reset()
+        .Write(" / ")
+        .Decorate(AnsiDecorations.Strikethrough).Write("strikethrough").Reset()
+        .Write("\n");
+
+    writer.Write("  ");
+    writer.Foreground(AnsiColor.Basic16(15)).Background(AnsiColor.Basic16(4));
+    writer.Decorate(AnsiDecorations.Invert).Write("invert").Reset();
+    writer.Write(" (reverse video)\n");
+
+    writer.Write("  ");
+    writer.Decorate(AnsiDecorations.Blink).Write("blink").Reset();
+    writer.Write(" (often not supported)\n");
+
+    writer.Write("  ");
+    writer.Background(AnsiColor.Basic16(7)).Foreground(AnsiColor.Basic16(0));
+    writer.Decorate(AnsiDecorations.Hidden).Write("hidden").Reset();
+    writer.Write(" (conceal; may render as blank)\n");
+
+    writer.Write("  ");
+    writer
+        .Foreground(AnsiColor.Indexed256(45))
+        .Decorate(AnsiDecorations.Bold | AnsiDecorations.Underline)
+        .Write("combined: bold + underline")
+        .Reset()
+        .Write("\n");
 
     var userInput = "[red]not-a-tag[/]";
     markup
