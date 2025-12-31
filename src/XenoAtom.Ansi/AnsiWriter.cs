@@ -21,7 +21,7 @@ namespace XenoAtom.Ansi;
 /// </list>
 /// This library is not a terminal emulator; it only emits the sequences required by rich-output renderers.
 /// </remarks>
-public class AnsiWriter
+public partial class AnsiWriter
 {
     private readonly IBufferWriter<char>? _bufferWriter;
     private readonly TextWriter? _textWriter;
@@ -499,6 +499,24 @@ public class AnsiWriter
     public AnsiWriter Back(int n = 1) => CursorBack(n);
 
     /// <summary>
+    /// Emits reverse index (RI) (<c>ESC M</c>).
+    /// </summary>
+    /// <remarks>
+    /// Moves the cursor up one line, scrolling if needed (and respecting scroll margins when set).
+    /// </remarks>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter ReverseIndex()
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        Write("\x1bM");
+        return this;
+    }
+
+    /// <summary>
     /// Emits the common DEC save cursor sequence (<c>ESC 7</c>).
     /// </summary>
     /// <returns>This writer, for fluent chaining.</returns>
@@ -512,6 +530,154 @@ public class AnsiWriter
         Write("\u001b7");
         return this;
     }
+
+    /// <summary>
+    /// Sets a horizontal tab stop at the current cursor column (HTS) (<c>ESC H</c>).
+    /// </summary>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter HorizontalTabSet()
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        Write("\x1bH");
+        return this;
+    }
+
+    /// <summary>
+    /// Advances the cursor to the next horizontal tab stop (CHT) (<c>ESC [ n I</c>).
+    /// </summary>
+    /// <param name="n">The number of tab stops to advance; values &lt;= 0 are treated as 1 by most terminals.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter CursorForwardTab(int n = 1)
+    {
+        WriteCsiWithInt(n, 'I');
+        return this;
+    }
+
+    /// <summary>
+    /// Moves the cursor to the previous horizontal tab stop (CBT) (<c>ESC [ n Z</c>).
+    /// </summary>
+    /// <param name="n">The number of tab stops to move back; values &lt;= 0 are treated as 1 by most terminals.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter CursorBackTab(int n = 1)
+    {
+        WriteCsiWithInt(n, 'Z');
+        return this;
+    }
+
+    /// <summary>
+    /// Clears the horizontal tab stop at the current column (TBC) (<c>ESC [ 0 g</c>).
+    /// </summary>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter ClearTabStop()
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        Write("\x1b[0g");
+        return this;
+    }
+
+    /// <summary>
+    /// Clears all horizontal tab stops (TBC) (<c>ESC [ 3 g</c>).
+    /// </summary>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter ClearAllTabStops()
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        Write("\x1b[3g");
+        return this;
+    }
+
+    /// <summary>
+    /// Enters DEC line drawing mode (DEC Special Graphics, G0) (<c>ESC ( 0</c>).
+    /// </summary>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter EnterLineDrawingMode()
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        Write("\x1b(0");
+        return this;
+    }
+
+    /// <summary>
+    /// Exits DEC line drawing mode and restores US-ASCII (G0) (<c>ESC ( B</c>).
+    /// </summary>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter ExitLineDrawingMode()
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        Write("\x1b(B");
+        return this;
+    }
+
+    /// <summary>
+    /// Enables keypad application mode (DECKPAM) (<c>ESC =</c>).
+    /// </summary>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter KeypadApplicationMode()
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        Write("\x1b=");
+        return this;
+    }
+
+    /// <summary>
+    /// Enables keypad numeric mode (DECKPNM) (<c>ESC &gt;</c>).
+    /// </summary>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter KeypadNumericMode()
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        Write("\x1b>");
+        return this;
+    }
+
+    /// <summary>
+    /// Enables or disables application cursor keys mode (DECCKM) (<c>ESC [ ? 1 h</c> / <c>ESC [ ? 1 l</c>).
+    /// </summary>
+    /// <param name="enabled"><see langword="true"/> to enable application mode; <see langword="false"/> to use normal mode.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter CursorKeysApplicationMode(bool enabled) => PrivateMode(1, enabled);
+
+    /// <summary>
+    /// Enables or disables the text cursor blinking mode (ATT160) (<c>ESC [ ? 12 h</c> / <c>ESC [ ? 12 l</c>).
+    /// </summary>
+    /// <param name="enabled"><see langword="true"/> to enable blinking; <see langword="false"/> to disable.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter CursorBlinking(bool enabled) => PrivateMode(12, enabled);
+
+    /// <summary>
+    /// Sets the number of columns to 132 (DECCOLM) (<c>ESC [ ? 3 h</c>) or back to 80 columns (<c>ESC [ ? 3 l</c>).
+    /// </summary>
+    /// <param name="enabled"><see langword="true"/> for 132 columns; <see langword="false"/> for 80 columns.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter Columns132(bool enabled) => PrivateMode(3, enabled);
 
     /// <summary>
     /// Emits CSI save cursor position (<c>ESC [ s</c>).
@@ -871,6 +1037,106 @@ public class AnsiWriter
     }
 
     /// <summary>
+    /// Requests the cursor position report (DECXCPR) (<c>ESC [ 6 n</c>).
+    /// </summary>
+    /// <remarks>
+    /// When supported, the terminal typically replies on the input stream with <c>ESC [ row ; col R</c>.
+    /// </remarks>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter RequestCursorPosition()
+    {
+        WriteCsiWithInt(6, 'n');
+        return this;
+    }
+
+    /// <summary>
+    /// Requests device attributes (DA) (<c>ESC [ c</c>).
+    /// </summary>
+    /// <remarks>
+    /// When supported, the terminal typically replies on the input stream with a CSI <c>c</c> response
+    /// (often with a private marker like <c>?</c>).
+    /// </remarks>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter RequestDeviceAttributes()
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        Write("\x1b[c");
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the window title (OSC 2) (<c>ESC ] 2 ; string ST</c>).
+    /// </summary>
+    /// <param name="title">The window title string (Windows Console traditionally limits it to &lt; 255 characters).</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter WindowTitle(ReadOnlySpan<char> title)
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        Write("\x1b]2;");
+        Write(title);
+        WriteOscTerminator(Capabilities);
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the icon + window title (OSC 0) (<c>ESC ] 0 ; string ST</c>).
+    /// </summary>
+    /// <param name="title">The icon/window title string.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter IconAndWindowTitle(ReadOnlySpan<char> title)
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        Write("\x1b]0;");
+        Write(title);
+        WriteOscTerminator(Capabilities);
+        return this;
+    }
+
+    /// <summary>
+    /// Modifies a palette color entry (OSC 4) (<c>ESC ] 4 ; i ; rgb:rr/gg/bb ST</c>).
+    /// </summary>
+    /// <param name="index">The palette index to modify.</param>
+    /// <param name="r">Red component.</param>
+    /// <param name="g">Green component.</param>
+    /// <param name="b">Blue component.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter SetPaletteColor(int index, byte r, byte g, byte b)
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        if (index < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), index, "Value must be non-negative.");
+        }
+
+        Write("\x1b]4;");
+        WriteInt(index);
+        Write(";rgb:");
+        WriteHexByte(r);
+        WriteChar('/');
+        WriteHexByte(g);
+        WriteChar('/');
+        WriteHexByte(b);
+        WriteOscTerminator(Capabilities);
+        return this;
+    }
+
+    /// <summary>
     /// Begins an OSC 8 hyperlink (<c>ESC ] 8 ; params ; uri ST</c>).
     /// </summary>
     /// <param name="uri">The hyperlink target URI.</param>
@@ -931,6 +1197,13 @@ public class AnsiWriter
                 Write("\x1b\\");
                 break;
         }
+    }
+
+    private void WriteHexByte(byte value)
+    {
+        const string Hex = "0123456789abcdef";
+        WriteChar(Hex[value >> 4]);
+        WriteChar(Hex[value & 0x0f]);
     }
 
     private void WriteCsiWithInt(int n, char final, bool allowZeroToOmit = false)

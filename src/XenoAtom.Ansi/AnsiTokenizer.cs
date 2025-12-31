@@ -44,11 +44,12 @@ public sealed class AnsiTokenizer : IDisposable
         Ground = 0,
         Escape = 1,
         EscIntermediate = 2,
-        Csi = 3,
-        Osc = 4,
-        OscMaybeSt = 5,
-        DcsOrIgnored = 6,
-        DcsOrIgnoredMaybeSt = 7,
+        Ss3 = 3,
+        Csi = 4,
+        Osc = 5,
+        OscMaybeSt = 6,
+        DcsOrIgnored = 7,
+        DcsOrIgnoredMaybeSt = 8,
     }
 
     private State _state;
@@ -224,6 +225,16 @@ public sealed class AnsiTokenizer : IDisposable
                         continue;
                     }
 
+                    // SS3 (ESC O final) is commonly used by terminals to encode input keys (application cursor keys, F1-F4).
+                    if (c == 'O')
+                    {
+                        _escapeBuffer.Append(c);
+                        _state = State.Ss3;
+                        i++;
+                        textStart = i;
+                        continue;
+                    }
+
                     if (c is 'P' or 'X' or '^' or '_')
                     {
                         _escapeBuffer.Append(c);
@@ -250,6 +261,33 @@ public sealed class AnsiTokenizer : IDisposable
                         tokens.Add(new UnknownEscapeToken(_escapeBuffer.ToStringAndClear()));
                         _state = State.Ground;
                     }
+                    i++;
+                    textStart = i;
+                    continue;
+
+                case State.Ss3:
+                    _escapeBuffer.Append(c);
+                    if (_escapeBuffer.Length > Options.MaxEscapeSequenceLength)
+                    {
+                        tokens.Add(new UnknownEscapeToken(_escapeBuffer.ToStringAndClear()));
+                        Reset();
+                        i++;
+                        textStart = i;
+                        continue;
+                    }
+
+                    // SS3 final bytes are typically 0x40–0x7E.
+                    if (c is >= (char)0x40 and <= (char)0x7E)
+                    {
+                        tokens.Add(new Ss3Token(c, _escapeBuffer.ToStringAndClear()));
+                        _state = State.Ground;
+                        i++;
+                        textStart = i;
+                        continue;
+                    }
+
+                    tokens.Add(new UnknownEscapeToken(_escapeBuffer.ToStringAndClear()));
+                    Reset();
                     i++;
                     textStart = i;
                     continue;

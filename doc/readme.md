@@ -297,6 +297,16 @@ Decoration parameters used by `Decorate(...)` / `Undecorate(...)`:
 | `SetScrollRegion(top,bottom)` | `ESC[<top>;<bottom>r` | DECSTBM |
 | `ResetScrollRegion()` | `ESC[r` | Reset DECSTBM |
 
+#### Simple ESC sequences
+
+| API | Emits | Notes |
+|---|---|---|
+| `ReverseIndex()` | `ESC M` | RI |
+| `KeypadApplicationMode()` | `ESC=` | DECKPAM |
+| `KeypadNumericMode()` | `ESC>` | DECKPNM |
+| `EnterLineDrawingMode()` | `ESC(0` | DEC Special Graphics / line drawing (G0) |
+| `ExitLineDrawingMode()` | `ESC(B` | US-ASCII (G0) |
+
 #### Cursor save/restore (ESC)
 
 | API | Emits | Notes |
@@ -306,6 +316,16 @@ Decoration parameters used by `Decorate(...)` / `Undecorate(...)`:
 | `SaveCursorPosition()` | `ESC[s` | SCOSC |
 | `RestoreCursorPosition()` | `ESC[u` | SCORC |
 
+#### Tabs
+
+| API | Emits | Notes |
+|---|---|---|
+| `HorizontalTabSet()` | `ESC H` | HTS |
+| `CursorForwardTab(n)` | `ESC[<n>I` | CHT |
+| `CursorBackTab(n)` | `ESC[<n>Z` | CBT |
+| `ClearTabStop()` | `ESC[0g` | TBC (current column) |
+| `ClearAllTabStops()` | `ESC[3g` | TBC (all columns) |
+
 #### DEC private modes (CSI with `?`)
 
 | API | Emits | Notes |
@@ -314,6 +334,9 @@ Decoration parameters used by `Decorate(...)` / `Undecorate(...)`:
 | `CursorVisible(false)` / `ShowCursor(false)` | `ESC[?25l` | Hide cursor |
 | `AlternateScreen(true)` / `EnterAlternateScreen()` | `ESC[?1049h` | Enter alternate screen |
 | `AlternateScreen(false)` / `LeaveAlternateScreen()` | `ESC[?1049l` | Leave alternate screen |
+| `CursorKeysApplicationMode(true/false)` | `ESC[?1h` / `ESC[?1l` | DECCKM |
+| `CursorBlinking(true/false)` | `ESC[?12h` / `ESC[?12l` | ATT160 cursor blinking |
+| `Columns132(true/false)` | `ESC[?3h` / `ESC[?3l` | DECCOLM (80/132 columns) |
 | `PrivateMode(n, true/false)` | `ESC[?<n>h` / `ESC[?<n>l` | Generic DEC private mode (DECSET/DECRST) |
 
 #### Soft reset (CSI with intermediate `!`)
@@ -328,10 +351,20 @@ Decoration parameters used by `Decorate(...)` / `Undecorate(...)`:
 |---|---|---|
 | `CursorStyle(AnsiCursorStyle)` | `ESC[<n> q` | DECSCUSR (0..6) |
 
+#### Queries (CSI)
+
+| API | Emits | Notes |
+|---|---|---|
+| `RequestCursorPosition()` | `ESC[6n` | DECXCPR; reply typically `ESC[<r>;<c>R` |
+| `RequestDeviceAttributes()` | `ESC[c` | DA; reply typically `ESC[?...c` |
+
 #### OSC (Operating System Command)
 
 | API | Emits | Notes |
 |---|---|---|
+| `WindowTitle(title)` | `ESC]2;<title>` + terminator | OSC 2 window title |
+| `IconAndWindowTitle(title)` | `ESC]0;<title>` + terminator | OSC 0 icon + window title |
+| `SetPaletteColor(i,r,g,b)` | `ESC]4;<i>;rgb:<rr>/<gg>/<bb>` + terminator | OSC 4 palette entry |
 | `BeginLink(uri, id)` | `ESC]8;id=<id>;<uri>` + terminator | OSC 8 hyperlink (id is optional) |
 | `EndLink()` | `ESC]8;;` + terminator | Ends OSC 8 hyperlink |
 
@@ -351,6 +384,7 @@ The tokenizer is designed to be streaming and tolerant: it never throws on malfo
 | Plain text | `TextToken` | Fast path when no `ESC` present |
 | CR/LF/TAB/BEL | `ControlToken` | Only this subset is surfaced as control tokens |
 | `ESC` sequences (non-CSI) | `EscToken` | Captures intermediates (`0x20..0x2F`) + final (`0x30..0x7E`) |
+| `ESC O` ... | `Ss3Token` | SS3 (common for input keys: application cursor keys, F1–F4) |
 | `ESC [` ... | `CsiToken` or `SgrToken` | `SgrToken` only when final is `m` and `DecodeSgr` is enabled |
 | `ESC ]` ... | `OscToken` | OSC code + data |
 | `CSI` (`0x9B`) ... | `CsiToken` or `SgrToken` | Also supports 8-bit C1 CSI |
@@ -363,6 +397,7 @@ The tokenizer is designed to be streaming and tolerant: it never throws on malfo
 |---|---|---|
 | `ESC [` | Starts CSI | CSI grammar: parameters (`0x30..0x3F`) + intermediates (`0x20..0x2F`) + final (`0x40..0x7E`) |
 | `ESC ]` | Starts OSC | OSC terminates with `BEL` (`\x07`) or `ST` (`ESC\`) |
+| `ESC O` | `Ss3Token` | SS3 used for input keys (e.g. `ESC O A` for Up in application mode) |
 | `ESC P` / `ESC X` / `ESC ^` / `ESC _` | Skipped until `ST` | DCS/SOS/PM/APC “string” functions are not decoded; emitted as `UnknownEscapeToken` |
 | Other `ESC` sequences | `EscToken` | Examples: `ESC7`, `ESC8`, `ESC\` |
 
@@ -388,6 +423,16 @@ Unknown or malformed SGR parameters are ignored (best-effort decoding).
 | `22,23,24,25,27,28,29` | Disable decorations | `SetDecoration(..., enabled: false)` (note: `22` clears bold+dim) |
 | `30..37`, `90..97` | Foreground basic-16 | `SetForeground(Basic16(...))` |
 | `40..47`, `100..107` | Background basic-16 | `SetBackground(Basic16(...))` |
+
+### Input parsing helpers
+
+While `AnsiTokenizer` is primarily syntactic, it can also be used to decode common terminal input sequences via convenience helpers:
+
+- `CsiToken.TryGetCursorPositionReport(out AnsiCursorPosition)` for CPR replies (`ESC[<row>;<col>R`)
+- `CsiToken.TryGetSgrMouseEvent(out AnsiMouseEvent)` for SGR mouse (`ESC[<b;x;yM/m`)
+- `AnsiToken.TryGetKeyEvent(out AnsiKeyEvent)` for common key sequences (arrows, Home/End, Insert/Delete, F1–F12, etc.)
+
+For test and host scenarios, `AnsiWriter` also provides helper instance methods to emit these input sequences.
 | `39` / `49` | Reset fg/bg to default | `SetForeground(Default)` / `SetBackground(Default)` |
 | `38;5;<n>` / `48;5;<n>` | 256-color indexed fg/bg | `SetForeground(Indexed256(n))` / `SetBackground(Indexed256(n))` |
 | `38;2;<r>;<g>;<b>` / `48;2;<r>;<g>;<b>` | Truecolor fg/bg | `SetForeground(Rgb(...))` / `SetBackground(Rgb(...))` |
