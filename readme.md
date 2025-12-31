@@ -1,4 +1,4 @@
-# XenoAtom.Ansi [![ci](https://github.com/XenoAtom/XenoAtom.Ansi/actions/workflows/ci.yml/badge.svg)](https://github.com/XenoAtom/XenoAtom.Ansi/actions/workflows/ci.yml) [![NuGet](https://img.shields.io/nuget/v/XenoAtom.Ansi.svg)](https://www.nuget.org/packages/XenoAtom.Ansi/)
+# XenoAtom.Ansi [![ci](https://github.com/XenoAtom/XenoAtom.Ansi/actions/workflows/ci.yml/badge.svg)](https://github.com/XenoAtom/XenoAtom.Ansi/actions/workflows/ci.yml) ![coverage](https://gist.githubusercontent.com/xoofx/4b1dc8d0fa14dd6a3846e78e5f0eafae/raw/dotnet-releaser-coverage-badge-XenoAtom-XenoAtom.Ansi.svg) [![NuGet](https://img.shields.io/nuget/v/XenoAtom.Ansi.svg)](https://www.nuget.org/packages/XenoAtom.Ansi/)
 
 <img align="right" width="160px" height="160px" src="https://raw.githubusercontent.com/XenoAtom/XenoAtom.Ansi/main/img/XenoAtom.Ansi.png">
 
