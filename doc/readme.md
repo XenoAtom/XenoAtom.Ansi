@@ -278,9 +278,24 @@ Decoration parameters used by `Decorate(...)` / `Undecorate(...)`:
 | `Down(n)` / `CursorDown(n)` | `ESC[<n>B` | Cursor down |
 | `Forward(n)` / `CursorForward(n)` | `ESC[<n>C` | Cursor forward |
 | `Back(n)` / `CursorBack(n)` | `ESC[<n>D` | Cursor back |
+| `NextLine(n)` | `ESC[<n>E` | Cursor next line |
+| `PreviousLine(n)` | `ESC[<n>F` | Cursor previous line |
+| `CursorHorizontalAbsolute(col)` | `ESC[<col>G` | 1-based |
+| `CursorVerticalAbsolute(row)` | `ESC[<row>d` | 1-based |
 | `MoveTo(row,col)` / `CursorPosition(row,col)` | `ESC[<row>;<col>H` | 1-based |
+| `HorizontalAndVerticalPosition(row,col)` | `ESC[<row>;<col>f` | 1-based |
 | `EraseLine(mode)` / `EraseInLine(mode)` | `ESC[<mode>K` | `mode=0` is emitted as `ESC[K` |
 | `EraseDisplay(mode)` / `EraseInDisplay(mode)` | `ESC[<mode>J` | `mode=0` is emitted as `ESC[J` |
+| `EraseScrollback()` | `ESC[3J` | Clear scrollback (xterm/Windows Terminal) |
+| `EraseCharacters(n)` | `ESC[<n>X` | Erase characters (ECH) |
+| `InsertCharacters(n)` | `ESC[<n>@` | Insert characters (ICH) |
+| `DeleteCharacters(n)` | `ESC[<n>P` | Delete characters (DCH) |
+| `InsertLines(n)` | `ESC[<n>L` | Insert lines (IL) |
+| `DeleteLines(n)` | `ESC[<n>M` | Delete lines (DL) |
+| `ScrollUp(n)` | `ESC[<n>S` | Scroll up (SU) |
+| `ScrollDown(n)` | `ESC[<n>T` | Scroll down (SD) |
+| `SetScrollRegion(top,bottom)` | `ESC[<top>;<bottom>r` | DECSTBM |
+| `ResetScrollRegion()` | `ESC[r` | Reset DECSTBM |
 
 #### Cursor save/restore (ESC)
 
@@ -288,6 +303,8 @@ Decoration parameters used by `Decorate(...)` / `Undecorate(...)`:
 |---|---|---|
 | `SaveCursor()` | `ESC7` | DECSC |
 | `RestoreCursor()` | `ESC8` | DECRC |
+| `SaveCursorPosition()` | `ESC[s` | SCOSC |
+| `RestoreCursorPosition()` | `ESC[u` | SCORC |
 
 #### DEC private modes (CSI with `?`)
 
@@ -297,12 +314,19 @@ Decoration parameters used by `Decorate(...)` / `Undecorate(...)`:
 | `CursorVisible(false)` / `ShowCursor(false)` | `ESC[?25l` | Hide cursor |
 | `AlternateScreen(true)` / `EnterAlternateScreen()` | `ESC[?1049h` | Enter alternate screen |
 | `AlternateScreen(false)` / `LeaveAlternateScreen()` | `ESC[?1049l` | Leave alternate screen |
+| `PrivateMode(n, true/false)` | `ESC[?<n>h` / `ESC[?<n>l` | Generic DEC private mode (DECSET/DECRST) |
 
 #### Soft reset (CSI with intermediate `!`)
 
 | API | Emits | Notes |
 |---|---|---|
 | `SoftReset()` | `ESC[!p` | “Soft reset” |
+
+#### Cursor style (CSI with intermediate `SP`)
+
+| API | Emits | Notes |
+|---|---|---|
+| `CursorStyle(AnsiCursorStyle)` | `ESC[<n> q` | DECSCUSR (0..6) |
 
 #### OSC (Operating System Command)
 
@@ -329,6 +353,8 @@ The tokenizer is designed to be streaming and tolerant: it never throws on malfo
 | `ESC` sequences (non-CSI) | `EscToken` | Captures intermediates (`0x20..0x2F`) + final (`0x30..0x7E`) |
 | `ESC [` ... | `CsiToken` or `SgrToken` | `SgrToken` only when final is `m` and `DecodeSgr` is enabled |
 | `ESC ]` ... | `OscToken` | OSC code + data |
+| `CSI` (`0x9B`) ... | `CsiToken` or `SgrToken` | Also supports 8-bit C1 CSI |
+| `OSC` (`0x9D`) ... | `OscToken` | Also supports 8-bit C1 OSC |
 | Malformed/unsupported/over-limit | `UnknownEscapeToken` | Best-effort recovery; never throws |
 
 #### ESC handling

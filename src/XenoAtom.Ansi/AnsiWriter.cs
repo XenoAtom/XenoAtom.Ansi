@@ -347,6 +347,60 @@ public class AnsiWriter
     }
 
     /// <summary>
+    /// Emits CSI next line (<c>ESC [ n E</c>).
+    /// </summary>
+    /// <param name="n">Number of lines; values &lt;= 0 are treated as 1 by most terminals.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter NextLine(int n = 1)
+    {
+        WriteCsiWithInt(n, 'E');
+        return this;
+    }
+
+    /// <summary>
+    /// Emits CSI previous line (<c>ESC [ n F</c>).
+    /// </summary>
+    /// <param name="n">Number of lines; values &lt;= 0 are treated as 1 by most terminals.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter PreviousLine(int n = 1)
+    {
+        WriteCsiWithInt(n, 'F');
+        return this;
+    }
+
+    /// <summary>
+    /// Emits CSI cursor horizontal absolute (<c>ESC [ col G</c>), 1-based.
+    /// </summary>
+    /// <param name="col">The 1-based column.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter CursorHorizontalAbsolute(int col = 1)
+    {
+        if (col < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(col), col, "Column must be 1-based.");
+        }
+
+        WriteCsiWithInt(col, 'G');
+        return this;
+    }
+
+    /// <summary>
+    /// Emits CSI line position absolute (<c>ESC [ row d</c>), 1-based.
+    /// </summary>
+    /// <param name="row">The 1-based row.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter CursorVerticalAbsolute(int row = 1)
+    {
+        if (row < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(row), row, "Row must be 1-based.");
+        }
+
+        WriteCsiWithInt(row, 'd');
+        return this;
+    }
+
+    /// <summary>
     /// Emits CSI cursor position (<c>ESC [ row ; col H</c>), 1-based.
     /// </summary>
     /// <param name="row">The 1-based row.</param>
@@ -374,6 +428,37 @@ public class AnsiWriter
         WriteChar(';');
         WriteInt(col);
         WriteChar('H');
+        return this;
+    }
+
+    /// <summary>
+    /// Emits CSI horizontal and vertical position (<c>ESC [ row ; col f</c>), 1-based.
+    /// </summary>
+    /// <param name="row">The 1-based row.</param>
+    /// <param name="col">The 1-based column.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter HorizontalAndVerticalPosition(int row, int col)
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        if (row < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(row), row, "Row must be 1-based.");
+        }
+
+        if (col < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(col), col, "Column must be 1-based.");
+        }
+
+        Write("\x1b[");
+        WriteInt(row);
+        WriteChar(';');
+        WriteInt(col);
+        WriteChar('f');
         return this;
     }
 
@@ -429,6 +514,21 @@ public class AnsiWriter
     }
 
     /// <summary>
+    /// Emits CSI save cursor position (<c>ESC [ s</c>).
+    /// </summary>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter SaveCursorPosition()
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        Write("\x1b[s");
+        return this;
+    }
+
+    /// <summary>
     /// Emits the common DEC restore cursor sequence (<c>ESC 8</c>).
     /// </summary>
     /// <returns>This writer, for fluent chaining.</returns>
@@ -440,6 +540,21 @@ public class AnsiWriter
         }
 
         Write("\u001b8");
+        return this;
+    }
+
+    /// <summary>
+    /// Emits CSI restore cursor position (<c>ESC [ u</c>).
+    /// </summary>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter RestoreCursorPosition()
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        Write("\x1b[u");
         return this;
     }
 
@@ -462,6 +577,207 @@ public class AnsiWriter
     public AnsiWriter EraseInDisplay(int mode = 0)
     {
         WriteCsiWithInt(mode, 'J', allowZeroToOmit: true);
+        return this;
+    }
+
+    /// <summary>
+    /// Emits CSI erase in display with mode 3 (<c>ESC [ 3 J</c>) to clear the scrollback buffer (xterm/Windows Terminal).
+    /// </summary>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter EraseScrollback()
+    {
+        EraseInDisplay(3);
+        return this;
+    }
+
+    /// <summary>
+    /// Emits CSI erase characters (<c>ESC [ n X</c>).
+    /// </summary>
+    /// <param name="n">Number of characters; values &lt;= 0 are treated as 1 by most terminals.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter EraseCharacters(int n = 1)
+    {
+        WriteCsiWithInt(n, 'X');
+        return this;
+    }
+
+    /// <summary>
+    /// Emits CSI insert characters (<c>ESC [ n @</c>).
+    /// </summary>
+    /// <param name="n">Number of characters; values &lt;= 0 are treated as 1 by most terminals.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter InsertCharacters(int n = 1)
+    {
+        WriteCsiWithInt(n, '@');
+        return this;
+    }
+
+    /// <summary>
+    /// Emits CSI delete characters (<c>ESC [ n P</c>).
+    /// </summary>
+    /// <param name="n">Number of characters; values &lt;= 0 are treated as 1 by most terminals.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter DeleteCharacters(int n = 1)
+    {
+        WriteCsiWithInt(n, 'P');
+        return this;
+    }
+
+    /// <summary>
+    /// Emits CSI insert lines (<c>ESC [ n L</c>).
+    /// </summary>
+    /// <param name="n">Number of lines; values &lt;= 0 are treated as 1 by most terminals.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter InsertLines(int n = 1)
+    {
+        WriteCsiWithInt(n, 'L');
+        return this;
+    }
+
+    /// <summary>
+    /// Emits CSI delete lines (<c>ESC [ n M</c>).
+    /// </summary>
+    /// <param name="n">Number of lines; values &lt;= 0 are treated as 1 by most terminals.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter DeleteLines(int n = 1)
+    {
+        WriteCsiWithInt(n, 'M');
+        return this;
+    }
+
+    /// <summary>
+    /// Emits CSI scroll up (<c>ESC [ n S</c>).
+    /// </summary>
+    /// <param name="n">Number of lines; values &lt;= 0 are treated as 1 by most terminals.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter ScrollUp(int n = 1)
+    {
+        WriteCsiWithInt(n, 'S');
+        return this;
+    }
+
+    /// <summary>
+    /// Emits CSI scroll down (<c>ESC [ n T</c>).
+    /// </summary>
+    /// <param name="n">Number of lines; values &lt;= 0 are treated as 1 by most terminals.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter ScrollDown(int n = 1)
+    {
+        WriteCsiWithInt(n, 'T');
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the scrolling region (DECSTBM) (<c>ESC [ top ; bottom r</c>), 1-based.
+    /// </summary>
+    /// <param name="top">The 1-based top margin.</param>
+    /// <param name="bottom">The 1-based bottom margin.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter SetScrollRegion(int top, int bottom)
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        if (top < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(top), top, "Top must be 1-based.");
+        }
+
+        if (bottom < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(bottom), bottom, "Bottom must be 1-based.");
+        }
+
+        if (bottom < top)
+        {
+            throw new ArgumentOutOfRangeException(nameof(bottom), bottom, "Bottom must be >= top.");
+        }
+
+        Write("\x1b[");
+        WriteInt(top);
+        WriteChar(';');
+        WriteInt(bottom);
+        WriteChar('r');
+        return this;
+    }
+
+    /// <summary>
+    /// Resets the scrolling region (DECSTBM) (<c>ESC [ r</c>).
+    /// </summary>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter ResetScrollRegion()
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        Write("\x1b[r");
+        return this;
+    }
+
+    /// <summary>
+    /// Sets or resets an ANSI mode (SM/RM) (<c>ESC [ n h</c> / <c>ESC [ n l</c>).
+    /// </summary>
+    /// <param name="mode">The mode number.</param>
+    /// <param name="enabled"><see langword="true"/> to set; <see langword="false"/> to reset.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter SetMode(int mode, bool enabled)
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        Write("\x1b[");
+        WriteInt(mode);
+        WriteChar(enabled ? 'h' : 'l');
+        return this;
+    }
+
+    /// <summary>
+    /// Sets or resets a DEC private mode (DECSET/DECRST) (<c>ESC [ ? n h</c> / <c>ESC [ ? n l</c>).
+    /// </summary>
+    /// <param name="mode">The DEC private mode number.</param>
+    /// <param name="enabled"><see langword="true"/> to set; <see langword="false"/> to reset.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter PrivateMode(int mode, bool enabled)
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        Write("\x1b[?");
+        WriteInt(mode);
+        WriteChar(enabled ? 'h' : 'l');
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the cursor style (DECSCUSR) (<c>ESC [ n SP q</c>).
+    /// </summary>
+    /// <param name="style">The cursor style parameter.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    public AnsiWriter CursorStyle(AnsiCursorStyle style)
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        var styleCode = (int)style;
+        if (styleCode < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(style), style, "Value must be non-negative.");
+        }
+
+        Write("\x1b[");
+        WriteInt(styleCode);
+        WriteChar(' ');
+        WriteChar('q');
         return this;
     }
 

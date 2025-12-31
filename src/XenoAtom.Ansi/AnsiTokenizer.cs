@@ -157,6 +157,39 @@ public sealed class AnsiTokenizer : IDisposable
                         continue;
                     }
 
+                    // C1 control codes (8-bit) used by some terminals/streams:
+                    // - CSI: 0x9B
+                    // - OSC: 0x9D
+                    // - DCS: 0x90
+                    // - PM:  0x9E
+                    // - APC: 0x9F
+                    if (c is '\x9b' or '\x9d' or '\x90' or '\x9e' or '\x9f')
+                    {
+                        FlushText(chunk, ref textStart, i, tokens);
+                        _escapeBuffer.Clear();
+                        _escapeBuffer.Append(c);
+
+                        if (c == '\x9b')
+                        {
+                            _csiParamBuffer.Clear();
+                            _csiIntermediateBuffer.Clear();
+                            _csiPrivateMarker = null;
+                            _state = State.Csi;
+                        }
+                        else if (c == '\x9d')
+                        {
+                            _state = State.Osc;
+                        }
+                        else
+                        {
+                            _state = State.DcsOrIgnored;
+                        }
+
+                        i++;
+                        textStart = i;
+                        continue;
+                    }
+
                     if (IsTokenizedControl(c))
                     {
                         FlushText(chunk, ref textStart, i, tokens);
@@ -352,6 +385,15 @@ public sealed class AnsiTokenizer : IDisposable
                         continue;
                     }
 
+                    if (c == '\x9c')
+                    {
+                        EmitOscToken(tokens, _escapeBuffer.ToStringAndClear());
+                        _state = State.Ground;
+                        i++;
+                        textStart = i;
+                        continue;
+                    }
+
                     if (c == '\x1b')
                     {
                         _state = State.OscMaybeSt;
@@ -368,6 +410,15 @@ public sealed class AnsiTokenizer : IDisposable
                     // We saw ESC inside OSC; if the next character is '\', it's ST (ESC \) and terminates the OSC.
                     _escapeBuffer.Append(c);
                     if (c == '\\')
+                    {
+                        EmitOscToken(tokens, _escapeBuffer.ToStringAndClear());
+                        _state = State.Ground;
+                        i++;
+                        textStart = i;
+                        continue;
+                    }
+
+                    if (c == '\x9c')
                     {
                         EmitOscToken(tokens, _escapeBuffer.ToStringAndClear());
                         _state = State.Ground;
@@ -397,6 +448,15 @@ public sealed class AnsiTokenizer : IDisposable
                     if (c == '\x1b')
                     {
                         _state = State.DcsOrIgnoredMaybeSt;
+                        i++;
+                        textStart = i;
+                        continue;
+                    }
+
+                    if (c == '\x9c')
+                    {
+                        tokens.Add(new UnknownEscapeToken(_escapeBuffer.ToStringAndClear()));
+                        _state = State.Ground;
                         i++;
                         textStart = i;
                         continue;
@@ -537,9 +597,17 @@ public sealed class AnsiTokenizer : IDisposable
 
     private static void EmitOscToken(List<AnsiToken> tokens, string raw)
     {
-        // raw: ESC ] ... BEL  OR  ESC ] ... ESC \
+        // raw: ESC ] ... BEL  OR  ESC ] ... ESC \  OR  OSC (0x9D) ... ST (0x9C)
         // We parse inside the brackets; tolerate malformed data.
-        var payload = raw.AsSpan(2); // after ESC ]
+        ReadOnlySpan<char> payload;
+        if (raw.Length > 0 && raw[0] == '\x9d')
+        {
+            payload = raw.AsSpan(1); // after OSC (C1)
+        }
+        else
+        {
+            payload = raw.AsSpan(2); // after ESC ]
+        }
         if (payload.Length == 0)
         {
             tokens.Add(new OscToken(-1, string.Empty, raw));
@@ -548,6 +616,10 @@ public sealed class AnsiTokenizer : IDisposable
 
         // trim terminator
         if (payload[^1] == '\x07')
+        {
+            payload = payload[..^1];
+        }
+        else if (payload[^1] == '\x9c')
         {
             payload = payload[..^1];
         }
