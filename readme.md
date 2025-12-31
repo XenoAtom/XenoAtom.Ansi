@@ -32,6 +32,8 @@ XenoAtom.Ansi is a fast, allocation-friendly .NET library for building rich ANSI
 
 ## 🧪 Samples
 
+![Example of XenoAtom.Ansi output](https://raw.githubusercontent.com/XenoAtom/XenoAtom.Ansi/main/doc/XenoAtom.Ansi-screenshot.png)
+
 - `samples/HelloWorld` — basic formatting across a few lines
 - `samples/HelloAdvanced` — richer demo (colors, decorations, markup, OSC 8 links, screen helpers)
 
@@ -41,8 +43,6 @@ Run:
 - `dotnet run --project samples/HelloAdvanced/HelloAdvanced.csproj`
 
 ## 📖 User Guide
-
-![Example of XenoAtom.Ansi output](https://raw.githubusercontent.com/XenoAtom/XenoAtom.Ansi/main/doc/XenoAtom.Ansi-screenshot.png)
 
 For more details on how to use XenoAtom.Ansi, please visit the [user guide](https://github.com/XenoAtom/XenoAtom.Ansi/blob/main/doc/readme.md).
 
