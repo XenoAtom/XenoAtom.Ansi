@@ -11,7 +11,8 @@ try
     writer.EraseDisplay(2).MoveTo(1, 1);
 
     markup.Write("[bold cyan]XenoAtom.Ansi[/] - [bold]HelloAdvanced[/]\n");
-    writer.Write("This sample emits ANSI/VT sequences; run it in a terminal that supports ANSI.\n\n");
+    writer.Write("This sample emits ANSI/VT sequences.\n");
+    writer.Write("Run it in a terminal that supports ANSI.\n\n");
 
     writer.CursorStyle(AnsiCursorStyle.SteadyBar);
     writer.CursorVisible(true);
