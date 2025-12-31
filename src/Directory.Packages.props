@@ -7,5 +7,6 @@
     <PackageVersion Include="MinVer" Version="6.1.0" />
     <PackageVersion Include="MSTest" Version="4.0.2" />
     <PackageVersion Include="Wcwidth" Version="4.0.1" />
+    <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
   </ItemGroup>
 </Project>
