@@ -25,7 +25,24 @@ XenoAtom.Ansi is a fast, allocation-friendly .NET library for building rich ANSI
 - **Color Helpers**
   - Palettes (`AnsiColors`, `AnsiPalettes`) for named colors and xterm-like RGB approximations
 
+> [!NOTE]
+> XenoAtom.Ansi is a low-level foundation library, not a terminal UI framework like `Spectre.Console`.
+> It focuses on emitting and parsing ANSI/VT sequences against `TextWriter` / character buffers.
+> It does not provide widgets, layout, input loops, or terminal state management (those belong in higher-level libraries).
+
+## 🧪 Samples
+
+- `samples/HelloWorld` — basic formatting across a few lines
+- `samples/HelloAdvanced` — richer demo (colors, decorations, markup, OSC 8 links, screen helpers)
+
+Run:
+
+- `dotnet run --project samples/HelloWorld/HelloWorld.csproj`
+- `dotnet run --project samples/HelloAdvanced/HelloAdvanced.csproj`
+
 ## 📖 User Guide
+
+![Example of XenoAtom.Ansi output](https://raw.githubusercontent.com/XenoAtom/XenoAtom.Ansi/main/doc/XenoAtom.Ansi-screenshot.png)
 
 For more details on how to use XenoAtom.Ansi, please visit the [user guide](https://github.com/XenoAtom/XenoAtom.Ansi/blob/main/doc/readme.md).
 

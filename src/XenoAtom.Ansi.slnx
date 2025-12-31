@@ -2,6 +2,10 @@
   <Folder Name="/Documentation/">
     <File Path="../doc/readme.md" />
   </Folder>
+  <Folder Name="/Samples/">
+    <Project Path="../samples/HelloAdvanced/HelloAdvanced.csproj" />
+    <Project Path="../samples/HelloWorld/HelloWorld.csproj" />
+  </Folder>
   <Folder Name="/Solution Items/">
     <File Path="../.editorconfig" />
     <File Path="../.gitattributes" />

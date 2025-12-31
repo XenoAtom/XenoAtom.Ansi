@@ -9,6 +9,18 @@ XenoAtom.Ansi is a .NET library for working with ANSI/VT escape sequences:
 
 It is not a terminal emulator. It does not maintain a full cursor/screen state or emulate scrolling regions.
 
+## Samples
+
+![Example of XenoAtom.Ansi output](https://raw.githubusercontent.com/XenoAtom/XenoAtom.Ansi/main/doc/XenoAtom.Ansi-screenshot.png)
+
+- `samples/HelloWorld` — basic formatting across a few lines
+- `samples/HelloAdvanced` — richer demo (colors, decorations, markup, OSC 8 links, screen helpers)
+
+Run from the repo root:
+
+- `dotnet run --project samples/HelloWorld/HelloWorld.csproj`
+- `dotnet run --project samples/HelloAdvanced/HelloAdvanced.csproj`
+
 ## ANSI/VT terminology (quick reference)
 
 Most "ANSI" terminal features are specified as control sequences introduced by the ESC character:
