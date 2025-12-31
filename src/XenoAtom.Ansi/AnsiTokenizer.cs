@@ -112,10 +112,7 @@ public sealed class AnsiTokenizer : IDisposable
     /// <param name="tokens">The destination token list.</param>
     public void Tokenize(ReadOnlySpan<char> chunk, bool isFinalChunk, List<AnsiToken> tokens)
     {
-        if (tokens is null)
-        {
-            throw new ArgumentNullException(nameof(tokens));
-        }
+        ArgumentNullException.ThrowIfNull(tokens);
 
         if (Options.MaxTokenCountPerChunk <= 0)
         {

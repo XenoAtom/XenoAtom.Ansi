@@ -219,10 +219,7 @@ public sealed class AnsiMarkup
     /// </summary>
     public static void AppendTo(AnsiWriter writer, ReadOnlySpan<char> markup)
     {
-        if (writer is null)
-        {
-            throw new ArgumentNullException(nameof(writer));
-        }
+        ArgumentNullException.ThrowIfNull(writer);
 
         var styleStack = new List<AnsiStyle>(8);
         var current = AnsiStyle.Default;

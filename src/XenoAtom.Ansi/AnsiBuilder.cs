@@ -24,10 +24,7 @@ public sealed class AnsiBuilder : IBufferWriter<char>, IDisposable
     /// <param name="initialCapacity">Initial buffer capacity hint.</param>
     public AnsiBuilder(int initialCapacity = 256)
     {
-        if (initialCapacity < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(initialCapacity));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(initialCapacity);
 
         _buffer = ArrayPool<char>.Shared.Rent(Math.Max(1, initialCapacity));
     }
@@ -92,10 +89,7 @@ public sealed class AnsiBuilder : IBufferWriter<char>, IDisposable
     public Memory<char> GetMemory(int sizeHint = 0)
     {
         EnsureNotDisposed();
-        if (sizeHint < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(sizeHint));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(sizeHint);
 
         EnsureCapacity(sizeHint);
         return _buffer.AsMemory(_length);
@@ -105,10 +99,7 @@ public sealed class AnsiBuilder : IBufferWriter<char>, IDisposable
     public Span<char> GetSpan(int sizeHint = 0)
     {
         EnsureNotDisposed();
-        if (sizeHint < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(sizeHint));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(sizeHint);
 
         EnsureCapacity(sizeHint);
         return _buffer.AsSpan(_length);
@@ -118,10 +109,7 @@ public sealed class AnsiBuilder : IBufferWriter<char>, IDisposable
     public void Advance(int count)
     {
         EnsureNotDisposed();
-        if (count < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(count));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
 
         var newLength = _length + count;
         if (newLength > _buffer!.Length)

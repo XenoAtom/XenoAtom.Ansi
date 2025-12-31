@@ -61,10 +61,7 @@ public static class AnsiText
             return 0;
         }
 
-        if (tabWidth < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(tabWidth));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(tabWidth);
 
         using var tokenizer = new AnsiTokenizer();
         var tokens = tokenizer.Tokenize(text, isFinalChunk: true);
@@ -112,10 +109,7 @@ public static class AnsiText
     /// <param name="tabWidth">Width, in cells, to count for tab characters.</param>
     public static string Truncate(string text, int width, string? ellipsis = "…", bool preserveAnsi = true, int tabWidth = 4)
     {
-        if (text is null)
-        {
-            throw new ArgumentNullException(nameof(text));
-        }
+        ArgumentNullException.ThrowIfNull(text);
 
         if (width <= 0)
         {
@@ -231,10 +225,7 @@ public static class AnsiText
     /// <param name="tabWidth">Width, in cells, to count for tab characters.</param>
     public static IReadOnlyList<string> Wrap(string text, int width, bool preserveAnsi = true, int tabWidth = 4)
     {
-        if (text is null)
-        {
-            throw new ArgumentNullException(nameof(text));
-        }
+        ArgumentNullException.ThrowIfNull(text);
 
         if (width <= 0)
         {

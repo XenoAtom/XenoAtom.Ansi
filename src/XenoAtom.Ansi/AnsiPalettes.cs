@@ -47,10 +47,8 @@ public static class AnsiPalettes
     /// <param name="index">The palette index in range [0, 15].</param>
     public static (byte R, byte G, byte B) GetBasic16Rgb(int index)
     {
-        if ((uint)index > 15)
-        {
-            throw new ArgumentOutOfRangeException(nameof(index), index, "Index must be in range [0, 15].");
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(index, 0);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(index, 15);
 
         var (r, g, b) = AnsiColorPalette.GetBasic16Rgb(index);
         return (r, g, b);
@@ -62,10 +60,8 @@ public static class AnsiPalettes
     /// <param name="index">The palette index in range [0, 255].</param>
     public static (byte R, byte G, byte B) GetXterm256Rgb(int index)
     {
-        if ((uint)index > 255)
-        {
-            throw new ArgumentOutOfRangeException(nameof(index), index, "Index must be in range [0, 255].");
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(index, 0);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(index, 255);
 
         var (r, g, b) = AnsiColorPalette.GetXterm256Rgb(index);
         return (r, g, b);

@@ -54,15 +54,8 @@ public partial class AnsiWriter
     /// <returns>This writer, for fluent chaining.</returns>
     public AnsiWriter WriteSgrMouseEvent(AnsiMouseEvent mouseEvent)
     {
-        if (mouseEvent.X < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(mouseEvent), mouseEvent.X, "X must be 1-based.");
-        }
-
-        if (mouseEvent.Y < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(mouseEvent), mouseEvent.Y, "Y must be 1-based.");
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(mouseEvent.X, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(mouseEvent.Y, 1);
 
         var cb = EncodeMouseCb(mouseEvent);
         var final = mouseEvent.Action == AnsiMouseAction.Release ? 'm' : 'M';

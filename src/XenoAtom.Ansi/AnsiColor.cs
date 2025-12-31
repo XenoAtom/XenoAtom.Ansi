@@ -65,10 +65,8 @@ public readonly record struct AnsiColor
     /// <param name="index">The palette index in range [0, 15].</param>
     public static AnsiColor Basic16(int index)
     {
-        if ((uint)index > 15)
-        {
-            throw new ArgumentOutOfRangeException(nameof(index), index, "Basic16 index must be in range [0, 15].");
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(index, 0);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(index, 15);
 
         return new AnsiColor(AnsiColorKind.Basic16, (byte)index, 0, 0, 0);
     }
@@ -79,10 +77,8 @@ public readonly record struct AnsiColor
     /// <param name="index">The palette index in range [0, 255].</param>
     public static AnsiColor Indexed256(int index)
     {
-        if ((uint)index > 255)
-        {
-            throw new ArgumentOutOfRangeException(nameof(index), index, "Indexed256 index must be in range [0, 255].");
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(index, 0);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(index, 255);
 
         return new AnsiColor(AnsiColorKind.Indexed256, (byte)index, 0, 0, 0);
     }

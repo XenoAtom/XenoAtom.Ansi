@@ -34,7 +34,8 @@ public partial class AnsiWriter
     /// <param name="capabilities">Output capability knobs.</param>
     public AnsiWriter(IBufferWriter<char> bufferWriter, AnsiCapabilities? capabilities = null)
     {
-        _bufferWriter = bufferWriter ?? throw new ArgumentNullException(nameof(bufferWriter));
+        ArgumentNullException.ThrowIfNull(bufferWriter);
+        _bufferWriter = bufferWriter;
         _textWriter = null;
         _codes = new List<int>(32);
         Capabilities = capabilities ?? AnsiCapabilities.Default;
@@ -48,7 +49,8 @@ public partial class AnsiWriter
     public AnsiWriter(TextWriter textWriter, AnsiCapabilities? capabilities = null)
     {
         _bufferWriter = null;
-        _textWriter = textWriter ?? throw new ArgumentNullException(nameof(textWriter));
+        ArgumentNullException.ThrowIfNull(textWriter);
+        _textWriter = textWriter;
         _codes = new List<int>(32);
         Capabilities = capabilities ?? AnsiCapabilities.Default;
     }
@@ -375,10 +377,7 @@ public partial class AnsiWriter
     /// <returns>This writer, for fluent chaining.</returns>
     public AnsiWriter CursorHorizontalAbsolute(int col = 1)
     {
-        if (col < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(col), col, "Column must be 1-based.");
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(col, 1);
 
         WriteCsiWithInt(col, 'G');
         return this;
@@ -391,10 +390,7 @@ public partial class AnsiWriter
     /// <returns>This writer, for fluent chaining.</returns>
     public AnsiWriter CursorVerticalAbsolute(int row = 1)
     {
-        if (row < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(row), row, "Row must be 1-based.");
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(row, 1);
 
         WriteCsiWithInt(row, 'd');
         return this;
@@ -413,15 +409,8 @@ public partial class AnsiWriter
             return this;
         }
 
-        if (row < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(row), row, "Row must be 1-based.");
-        }
-
-        if (col < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(col), col, "Column must be 1-based.");
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(row, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(col, 1);
 
         Write("\x1b[");
         WriteInt(row);
@@ -444,15 +433,8 @@ public partial class AnsiWriter
             return this;
         }
 
-        if (row < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(row), row, "Row must be 1-based.");
-        }
-
-        if (col < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(col), col, "Column must be 1-based.");
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(row, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(col, 1);
 
         Write("\x1b[");
         WriteInt(row);
@@ -846,20 +828,9 @@ public partial class AnsiWriter
             return this;
         }
 
-        if (top < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(top), top, "Top must be 1-based.");
-        }
-
-        if (bottom < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(bottom), bottom, "Bottom must be 1-based.");
-        }
-
-        if (bottom < top)
-        {
-            throw new ArgumentOutOfRangeException(nameof(bottom), bottom, "Bottom must be >= top.");
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(top, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(bottom, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(bottom, top);
 
         Write("\x1b[");
         WriteInt(top);
@@ -935,10 +906,7 @@ public partial class AnsiWriter
         }
 
         var styleCode = (int)style;
-        if (styleCode < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(style), style, "Value must be non-negative.");
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(styleCode, nameof(style));
 
         Write("\x1b[");
         WriteInt(styleCode);
@@ -1119,10 +1087,7 @@ public partial class AnsiWriter
             return this;
         }
 
-        if (index < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(index), index, "Value must be non-negative.");
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
 
         Write("\x1b]4;");
         WriteInt(index);
@@ -1149,10 +1114,7 @@ public partial class AnsiWriter
             return this;
         }
 
-        if (uri is null)
-        {
-            throw new ArgumentNullException(nameof(uri));
-        }
+        ArgumentNullException.ThrowIfNull(uri);
 
         Write("\x1b]8;");
         if (!string.IsNullOrEmpty(id))
@@ -1213,10 +1175,7 @@ public partial class AnsiWriter
             return;
         }
 
-        if (n < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(n), n, "Value must be non-negative.");
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(n);
 
         if (allowZeroToOmit && n == 0)
         {
