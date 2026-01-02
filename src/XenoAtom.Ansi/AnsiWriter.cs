@@ -78,12 +78,7 @@ public partial class AnsiWriter
             return this;
         }
 
-        if (_bufferWriter is null)
-        {
-            throw new InvalidOperationException("AnsiWriter was not initialized with an output.");
-        }
-
-        var span = _bufferWriter.GetSpan(text.Length);
+        var span = _bufferWriter!.GetSpan(text.Length);
         text.CopyTo(span);
         _bufferWriter.Advance(text.Length);
         return this;
@@ -112,12 +107,7 @@ public partial class AnsiWriter
             return;
         }
 
-        if (_bufferWriter is null)
-        {
-            throw new InvalidOperationException("AnsiWriter was not initialized with an output.");
-        }
-
-        var span = _bufferWriter.GetSpan(1);
+        var span = _bufferWriter!.GetSpan(1);
         span[0] = ch;
         _bufferWriter.Advance(1);
     }
@@ -136,12 +126,7 @@ public partial class AnsiWriter
             return;
         }
 
-        if (_bufferWriter is null)
-        {
-            throw new InvalidOperationException("AnsiWriter was not initialized with an output.");
-        }
-
-        var span = _bufferWriter.GetSpan(11);
+        var span = _bufferWriter!.GetSpan(11);
         if (!value.TryFormat(span, out var written))
         {
             throw new InvalidOperationException("Failed to format an integer.");
