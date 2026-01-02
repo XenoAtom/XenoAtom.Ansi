@@ -89,6 +89,40 @@ public readonly record struct AnsiColor
     public static AnsiColor Rgb(byte r, byte g, byte b) => new(AnsiColorKind.Rgb, 0, r, g, b);
 
     /// <summary>
+    /// Converts a <see cref="ConsoleColor"/> to an ANSI basic-16 color.
+    /// </summary>
+    /// <remarks>
+    /// This maps the Windows <see cref="ConsoleColor"/> values to the conventional ANSI basic-16 palette indices:
+    /// <c>0..7</c> for normal colors and <c>8..15</c> for bright colors.
+    /// </remarks>
+    public static implicit operator AnsiColor(ConsoleColor color)
+    {
+        // ConsoleColor values are not in ANSI order (e.g. DarkBlue is 1). We map explicitly.
+        var index = color switch
+        {
+            ConsoleColor.Black => 0,
+            ConsoleColor.DarkRed => 1,
+            ConsoleColor.DarkGreen => 2,
+            ConsoleColor.DarkYellow => 3,
+            ConsoleColor.DarkBlue => 4,
+            ConsoleColor.DarkMagenta => 5,
+            ConsoleColor.DarkCyan => 6,
+            ConsoleColor.Gray => 7,
+            ConsoleColor.DarkGray => 8,
+            ConsoleColor.Red => 9,
+            ConsoleColor.Green => 10,
+            ConsoleColor.Yellow => 11,
+            ConsoleColor.Blue => 12,
+            ConsoleColor.Magenta => 13,
+            ConsoleColor.Cyan => 14,
+            ConsoleColor.White => 15,
+            _ => 7,
+        };
+
+        return Basic16(index);
+    }
+
+    /// <summary>
     /// Attempts to downgrade this color to a maximum supported <see cref="AnsiColorLevel"/>.
     /// </summary>
     /// <param name="maxLevel">The maximum supported level.</param>
