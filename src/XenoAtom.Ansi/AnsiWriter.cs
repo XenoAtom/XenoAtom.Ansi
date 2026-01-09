@@ -21,7 +21,7 @@ namespace XenoAtom.Ansi;
 /// </list>
 /// This library is not a terminal emulator; it only emits the sequences required by rich-output renderers.
 /// </remarks>
-public partial class AnsiWriter
+public partial class AnsiWriter : IAnsiBasicWriter
 {
     private readonly IBufferWriter<char>? _bufferWriter;
     private readonly TextWriter? _textWriter;
@@ -97,6 +97,11 @@ public partial class AnsiWriter
         }
 
         return Write(text.AsSpan());
+    }
+
+    void IAnsiBasicWriter.Write(ReadOnlySpan<char> text)
+    {
+        Write(text);
     }
 
     private void WriteChar(char ch)
@@ -197,6 +202,11 @@ public partial class AnsiWriter
     /// <param name="to">The desired style.</param>
     /// <returns>This writer, for fluent chaining.</returns>
     public AnsiWriter StyleTransition(AnsiStyle from, AnsiStyle to) => StyleTransition(from, to, Capabilities);
+
+    void IAnsiBasicWriter.StyleTransition(AnsiStyle from, AnsiStyle to)
+    {
+        StyleTransition(from, to);
+    }
 
     /// <summary>
     /// Emits a minimal SGR sequence that transitions from one style to another using the specified capabilities.

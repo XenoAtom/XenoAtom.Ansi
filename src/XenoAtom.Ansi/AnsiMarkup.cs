@@ -24,7 +24,7 @@ namespace XenoAtom.Ansi;
 /// </remarks>
 public sealed class AnsiMarkup
 {
-    private readonly AnsiWriter _writer;
+    private readonly IAnsiBasicWriter _writer;
     private readonly List<AnsiStyle> _styleStack;
 
     /// <summary>
@@ -32,6 +32,16 @@ public sealed class AnsiMarkup
     /// </summary>
     /// <param name="writer">The target writer to append markup output to.</param>
     public AnsiMarkup(AnsiWriter writer)
+    {
+        _writer = writer ?? throw new ArgumentNullException(nameof(writer));
+        _styleStack = new List<AnsiStyle>(8);
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AnsiMarkup"/> class that writes to an existing <see cref="IAnsiBasicWriter"/>.
+    /// </summary>
+    /// <param name="writer">The target writer to append markup output to.</param>
+    public AnsiMarkup(IAnsiBasicWriter writer)
     {
         _writer = writer ?? throw new ArgumentNullException(nameof(writer));
         _styleStack = new List<AnsiStyle>(8);
@@ -227,7 +237,19 @@ public sealed class AnsiMarkup
         AppendTo(writer, markup, styleStack, ref current);
     }
 
-    private static void AppendTo(AnsiWriter writer, ReadOnlySpan<char> markup, List<AnsiStyle> styleStack, ref AnsiStyle currentStyle)
+    /// <summary>
+    /// Appends rendered markup to an existing <see cref="IAnsiBasicWriter"/>.
+    /// </summary>
+    public static void AppendTo(IAnsiBasicWriter writer, ReadOnlySpan<char> markup)
+    {
+        ArgumentNullException.ThrowIfNull(writer);
+
+        var styleStack = new List<AnsiStyle>(8);
+        var current = AnsiStyle.Default;
+        AppendTo(writer, markup, styleStack, ref current);
+    }
+
+    private static void AppendTo(IAnsiBasicWriter writer, ReadOnlySpan<char> markup, List<AnsiStyle> styleStack, ref AnsiStyle currentStyle)
     {
         if (markup.IsEmpty)
         {
@@ -304,7 +326,7 @@ public sealed class AnsiMarkup
         }
     }
 
-    private static bool TryProcessTag(AnsiWriter writer, ReadOnlySpan<char> tag, List<AnsiStyle> styleStack, ref AnsiStyle currentStyle)
+    private static bool TryProcessTag(IAnsiBasicWriter writer, ReadOnlySpan<char> tag, List<AnsiStyle> styleStack, ref AnsiStyle currentStyle)
     {
         tag = Trim(tag);
         if (tag.IsEmpty)
