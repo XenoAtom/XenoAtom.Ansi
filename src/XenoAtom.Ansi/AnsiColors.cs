@@ -14,7 +14,7 @@ namespace XenoAtom.Ansi;
 /// The actual RGB values displayed for these indices are terminal/theme dependent.
 /// If you need RGB approximations for rendering, use <see cref="AnsiPalettes"/>.
 /// </remarks>
-public static class AnsiColors
+public static partial class AnsiColors
 {
     /// <summary>
     /// The terminal default color (SGR 39/49).

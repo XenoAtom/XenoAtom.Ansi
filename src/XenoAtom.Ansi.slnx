@@ -20,5 +20,8 @@
   </Folder>
   <Project Path="XenoAtom.Ansi.Tests/XenoAtom.Ansi.Tests.csproj" />
   <Project Path="XenoAtom.Ansi/XenoAtom.Ansi.csproj" />
+  <Folder Name="/Tools/">
+    <Project Path="../tools/ColorGenerator/ColorGenerator.csproj" />
+  </Folder>
   <Project Path="XenoAtom.Ansi.Benchmarks/XenoAtom.Ansi.Benchmarks.csproj" />
 </Solution>

@@ -6,7 +6,7 @@ XenoAtom.Ansi is a fast, allocation-friendly .NET library for building rich ANSI
 
 ## ✨ Features
 
-- `net8.0`+ library and NativeAOT ready
+- `net10.0`+ library and NativeAOT ready
 - Fast, allocation-friendly APIs
 - **Rendering / Emitting**
   - `AnsiWriter` fluent API (writes to `TextWriter` or `IBufferWriter<char>`)
@@ -23,7 +23,7 @@ XenoAtom.Ansi is a fast, allocation-friendly .NET library for building rich ANSI
 - **Text Utilities**
   - ANSI-aware text helpers (`AnsiText`): strip, visible width measurement (wcwidth), wrap, truncate (optionally preserving ANSI)
 - **Color Helpers**
-  - Palettes (`AnsiColors`, `AnsiPalettes`) for named colors and xterm-like RGB approximations
+  - Palettes (`AnsiColors`, `AnsiColors.Web`, `AnsiPalettes`) for named colors and xterm-like RGB approximations
 
 > [!NOTE]
 > XenoAtom.Ansi is a low-level foundation library, not a terminal UI framework like `Spectre.Console`.

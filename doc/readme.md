@@ -180,6 +180,8 @@ var s = AnsiMarkup.Render($"[red]{userInput}[/]");
 
 - Decorations: `bold`, `dim`, `italic`, `underline`, `blink`, `invert`, `hidden`, `strikethrough`
 - Foreground colors: `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, `gray`/`grey`, and `bright*` variants (e.g. `brightred`, `bright-red`)
+- Web (CSS/SVG/X11) named colors: e.g. `cornflowerblue`, `rebeccapurple`, `darkslategray`, ...
+  - Use `web:` to disambiguate legacy/basic names (e.g. `web:gray`, `web:red`) or when `light*`/`bright*` would otherwise resolve to the basic palette (e.g. `web:lightblue`).
 - Background colors: `on <color>`, `bg:<color>`, or `bg=<color>`
 - 256-color indexed: `0..255` (foreground), `bg:0..255` (background)
 - Truecolor: `#RRGGBB` or `rgb(r,g,b)` (foreground), and `bg:#RRGGBB` (background)
@@ -239,6 +241,8 @@ var truncated = AnsiText.Truncate("hello world", width: 5);  // "hell…"
 ## Palettes
 
 - `AnsiColors` provides named basic-16 palette indices (e.g. `AnsiColors.Red`).
+- `AnsiColors.Web` provides the Web (CSS/SVG/X11) named colors as truecolor RGB values (e.g. `AnsiColors.Web.CornflowerBlue`).
+- `AnsiColors.TryGetByName(...)` / `AnsiColors.TryGetWebByName(...)` provide fast name lookup intended for markup and custom parsers.
 - `AnsiPalettes` provides xterm-like RGB approximations for palette indices when rendering outside a terminal.
 
 ```csharp
