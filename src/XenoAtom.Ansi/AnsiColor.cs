@@ -23,41 +23,36 @@ public readonly record struct AnsiColor
     /// <summary>
     /// The terminal default color.
     /// </summary>
-    public static readonly AnsiColor Default = new(AnsiColorKind.Default, 0, 0, 0, 0);
+    public static readonly AnsiColor Default = new(Pack(AnsiColorKind.Default, payload0: 0, payload1: 0, payload2: 0));
 
-    private AnsiColor(AnsiColorKind kind, byte index, byte r, byte g, byte b)
-    {
-        Kind = kind;
-        Index = index;
-        R = r;
-        G = g;
-        B = b;
-    }
+    private readonly uint _value;
+
+    private AnsiColor(uint value) => _value = value;
 
     /// <summary>
     /// Gets the kind of this color value.
     /// </summary>
-    public AnsiColorKind Kind { get; }
+    public AnsiColorKind Kind => (AnsiColorKind)((_value >> 24) & 0xFF);
 
     /// <summary>
     /// Gets the palette index for <see cref="AnsiColorKind.Basic16"/> or <see cref="AnsiColorKind.Indexed256"/>.
     /// </summary>
-    public byte Index { get; }
+    public byte Index => Kind is AnsiColorKind.Basic16 or AnsiColorKind.Indexed256 ? (byte)((_value >> 16) & 0xFF) : (byte)0;
 
     /// <summary>
     /// Gets the red component for <see cref="AnsiColorKind.Rgb"/>.
     /// </summary>
-    public byte R { get; }
+    public byte R => Kind == AnsiColorKind.Rgb ? (byte)((_value >> 16) & 0xFF) : (byte)0;
 
     /// <summary>
     /// Gets the green component for <see cref="AnsiColorKind.Rgb"/>.
     /// </summary>
-    public byte G { get; }
+    public byte G => Kind == AnsiColorKind.Rgb ? (byte)((_value >> 8) & 0xFF) : (byte)0;
 
     /// <summary>
     /// Gets the blue component for <see cref="AnsiColorKind.Rgb"/>.
     /// </summary>
-    public byte B { get; }
+    public byte B => Kind == AnsiColorKind.Rgb ? (byte)(_value & 0xFF) : (byte)0;
 
     /// <summary>
     /// Creates a basic 16-color palette value.
@@ -68,7 +63,7 @@ public readonly record struct AnsiColor
         ArgumentOutOfRangeException.ThrowIfLessThan(index, 0);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(index, 15);
 
-        return new AnsiColor(AnsiColorKind.Basic16, (byte)index, 0, 0, 0);
+        return new AnsiColor(Pack(AnsiColorKind.Basic16, payload0: (byte)index, payload1: 0, payload2: 0));
     }
 
     /// <summary>
@@ -80,13 +75,13 @@ public readonly record struct AnsiColor
         ArgumentOutOfRangeException.ThrowIfLessThan(index, 0);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(index, 255);
 
-        return new AnsiColor(AnsiColorKind.Indexed256, (byte)index, 0, 0, 0);
+        return new AnsiColor(Pack(AnsiColorKind.Indexed256, payload0: (byte)index, payload1: 0, payload2: 0));
     }
 
     /// <summary>
     /// Creates a truecolor RGB value.
     /// </summary>
-    public static AnsiColor Rgb(byte r, byte g, byte b) => new(AnsiColorKind.Rgb, 0, r, g, b);
+    public static AnsiColor Rgb(byte r, byte g, byte b) => new(Pack(AnsiColorKind.Rgb, payload0: r, payload1: g, payload2: b));
 
     /// <summary>
     /// Converts a <see cref="ConsoleColor"/> to an ANSI basic-16 color.
@@ -205,5 +200,15 @@ public readonly record struct AnsiColor
 
         downgraded = Default;
         return false;
+    }
+
+    private static uint Pack(AnsiColorKind kind, byte payload0, byte payload1, byte payload2)
+    {
+        // Layout (little endian view):
+        // - bits 24..31: kind
+        // - bits 16..23: payload0 (index for palette kinds, R for RGB)
+        // - bits 8..15 : payload1 (G for RGB)
+        // - bits 0..7  : payload2 (B for RGB)
+        return ((uint)kind << 24) | ((uint)payload0 << 16) | ((uint)payload1 << 8) | payload2;
     }
 }
