@@ -26,6 +26,8 @@ public sealed class AnsiMarkup
 {
     private readonly IAnsiBasicWriter _writer;
     private readonly List<AnsiStyle> _styleStack;
+    private readonly Dictionary<string, AnsiStyle>? _customStylesByName;
+    private readonly Dictionary<string, AnsiStyle>.AlternateLookup<ReadOnlySpan<char>> _customStylesByNameSpan;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AnsiMarkup"/> class that writes to an existing <see cref="AnsiWriter"/>.
@@ -35,6 +37,19 @@ public sealed class AnsiMarkup
     {
         _writer = writer ?? throw new ArgumentNullException(nameof(writer));
         _styleStack = new List<AnsiStyle>(8);
+        _customStylesByName = null;
+        _customStylesByNameSpan = default;
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AnsiMarkup"/> class that writes to an existing <see cref="AnsiWriter"/>
+    /// and uses the specified custom style tokens.
+    /// </summary>
+    /// <param name="writer">The target writer to append markup output to.</param>
+    /// <param name="customStyles">A dictionary mapping custom token names (e.g. <c>primary</c>, <c>success</c>) to styles.</param>
+    public AnsiMarkup(AnsiWriter writer, Dictionary<string, AnsiStyle>? customStyles)
+        : this((IAnsiBasicWriter)writer, customStyles)
+    {
     }
 
     /// <summary>
@@ -45,6 +60,25 @@ public sealed class AnsiMarkup
     {
         _writer = writer ?? throw new ArgumentNullException(nameof(writer));
         _styleStack = new List<AnsiStyle>(8);
+        _customStylesByName = null;
+        _customStylesByNameSpan = default;
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AnsiMarkup"/> class that writes to an existing <see cref="IAnsiBasicWriter"/>
+    /// and uses the specified custom style tokens.
+    /// </summary>
+    /// <param name="writer">The target writer to append markup output to.</param>
+    /// <param name="customStyles">A dictionary mapping custom token names (e.g. <c>primary</c>, <c>success</c>) to styles.</param>
+    public AnsiMarkup(IAnsiBasicWriter writer, Dictionary<string, AnsiStyle>? customStyles)
+    {
+        _writer = writer ?? throw new ArgumentNullException(nameof(writer));
+        _styleStack = new List<AnsiStyle>(8);
+
+        _customStylesByName = CreateCustomStyles(customStyles);
+        _customStylesByNameSpan = _customStylesByName is null
+            ? default
+            : _customStylesByName.GetAlternateLookup<ReadOnlySpan<char>>();
     }
 
     /// <summary>
@@ -76,7 +110,7 @@ public sealed class AnsiMarkup
     {
         _styleStack.Clear();
         var current = AnsiStyle.Default;
-        AppendTo(_writer, markup, _styleStack, ref current);
+        AppendTo(_writer, markup, _styleStack, ref current, _customStylesByName, _customStylesByNameSpan);
         return this;
     }
 
@@ -234,7 +268,7 @@ public sealed class AnsiMarkup
 
         var styleStack = new List<AnsiStyle>(8);
         var current = AnsiStyle.Default;
-        AppendTo(writer, markup, styleStack, ref current);
+        AppendTo(writer, markup, styleStack, ref current, customStylesByName: null, customStylesByNameSpan: default);
     }
 
     /// <summary>
@@ -246,10 +280,33 @@ public sealed class AnsiMarkup
 
         var styleStack = new List<AnsiStyle>(8);
         var current = AnsiStyle.Default;
-        AppendTo(writer, markup, styleStack, ref current);
+        AppendTo(writer, markup, styleStack, ref current, customStylesByName: null, customStylesByNameSpan: default);
     }
 
-    private static void AppendTo(IAnsiBasicWriter writer, ReadOnlySpan<char> markup, List<AnsiStyle> styleStack, ref AnsiStyle currentStyle)
+    /// <summary>
+    /// Appends rendered markup to an existing <see cref="IAnsiBasicWriter"/> and uses the specified custom style tokens.
+    /// </summary>
+    public static void AppendTo(IAnsiBasicWriter writer, ReadOnlySpan<char> markup, Dictionary<string, AnsiStyle>? customStyles)
+    {
+        ArgumentNullException.ThrowIfNull(writer);
+
+        var customStylesByName = CreateCustomStyles(customStyles);
+        var customStylesByNameSpan = customStylesByName is null
+            ? default
+            : customStylesByName.GetAlternateLookup<ReadOnlySpan<char>>();
+
+        var styleStack = new List<AnsiStyle>(8);
+        var current = AnsiStyle.Default;
+        AppendTo(writer, markup, styleStack, ref current, customStylesByName, customStylesByNameSpan);
+    }
+
+    private static void AppendTo(
+        IAnsiBasicWriter writer,
+        ReadOnlySpan<char> markup,
+        List<AnsiStyle> styleStack,
+        ref AnsiStyle currentStyle,
+        Dictionary<string, AnsiStyle>? customStylesByName,
+        Dictionary<string, AnsiStyle>.AlternateLookup<ReadOnlySpan<char>> customStylesByNameSpan)
     {
         if (markup.IsEmpty)
         {
@@ -291,7 +348,7 @@ public sealed class AnsiMarkup
                 var tagLen = close;
                 var tag = markup.Slice(tagStart, tagLen);
 
-                if (!TryProcessTag(writer, tag, styleStack, ref currentStyle))
+                if (!TryProcessTag(writer, tag, styleStack, ref currentStyle, customStylesByName, customStylesByNameSpan))
                 {
                     writer.Write(markup.Slice(i, tagLen + 2));
                 }
@@ -326,7 +383,13 @@ public sealed class AnsiMarkup
         }
     }
 
-    private static bool TryProcessTag(IAnsiBasicWriter writer, ReadOnlySpan<char> tag, List<AnsiStyle> styleStack, ref AnsiStyle currentStyle)
+    private static bool TryProcessTag(
+        IAnsiBasicWriter writer,
+        ReadOnlySpan<char> tag,
+        List<AnsiStyle> styleStack,
+        ref AnsiStyle currentStyle,
+        Dictionary<string, AnsiStyle>? customStylesByName,
+        Dictionary<string, AnsiStyle>.AlternateLookup<ReadOnlySpan<char>> customStylesByNameSpan)
     {
         tag = Trim(tag);
         if (tag.IsEmpty)
@@ -389,7 +452,7 @@ public sealed class AnsiMarkup
                         ToLowerAsciiInvariant(token[1]) == 'g' &&
                         (token[2] == ':' || token[2] == '='))
                     {
-                        if (!TryParseColorToken(token[3..], out var bgPrefixed))
+                        if (!TryParseColorToken(token[3..], customStylesByName, customStylesByNameSpan, out var bgPrefixed))
                         {
                             return false;
                         }
@@ -418,7 +481,7 @@ public sealed class AnsiMarkup
                         ToLowerAsciiInvariant(token[1]) == 'g' &&
                         (token[2] == ':' || token[2] == '='))
                     {
-                        if (!TryParseColorToken(token[3..], out var fgPrefixed))
+                        if (!TryParseColorToken(token[3..], customStylesByName, customStylesByNameSpan, out var fgPrefixed))
                         {
                             return false;
                         }
@@ -431,7 +494,8 @@ public sealed class AnsiMarkup
                 case 'o':
                     if (token.Length == 2 && token[1] is 'n' or 'N')
                     {
-                        if (!TryReadToken(tag, ref index, out var colorToken) || !TryParseColorToken(colorToken, out var bg))
+                        if (!TryReadToken(tag, ref index, out var colorToken) ||
+                            !TryParseColorToken(colorToken, customStylesByName, customStylesByNameSpan, out var bg))
                         {
                             return false;
                         }
@@ -485,6 +549,13 @@ public sealed class AnsiMarkup
             {
                 nextStyle = nextStyle with { Foreground = fg };
                 recognized = true;
+                continue;
+            }
+
+            if (TryGetCustomStyleToken(customStylesByName, customStylesByNameSpan, token, out var customStyle))
+            {
+                ApplyCustomStyleToken(ref nextStyle, customStyle);
+                recognized = true;
             }
         }
 
@@ -511,7 +582,7 @@ public sealed class AnsiMarkup
         // - #RRGGBB
         // - 0..255 (indexed)
         // - rgb(r,g,b)
-        // - named colors (including bright/light prefixes)
+        // - named colors (including bright/light prefixes + web colors)
         var first = token[0];
         if (first == '#')
         {
@@ -529,6 +600,28 @@ public sealed class AnsiMarkup
         }
 
         return TryParseNamedColor(token, out color);
+    }
+
+    private static bool TryParseColorToken(
+        ReadOnlySpan<char> token,
+        Dictionary<string, AnsiStyle>? customStylesByName,
+        Dictionary<string, AnsiStyle>.AlternateLookup<ReadOnlySpan<char>> customStylesByNameSpan,
+        out AnsiColor color)
+    {
+        if (TryParseColorToken(token, out color))
+        {
+            return true;
+        }
+
+        if (TryGetCustomStyleToken(customStylesByName, customStylesByNameSpan, token, out var customStyle) &&
+            customStyle.Foreground is { } customForeground)
+        {
+            color = customForeground;
+            return true;
+        }
+
+        color = default;
+        return false;
     }
 
     private static bool TryParseRgbFunction(ReadOnlySpan<char> token, out AnsiColor color)
@@ -690,6 +783,108 @@ public sealed class AnsiMarkup
     private static bool TryParseNamedColor(ReadOnlySpan<char> token, out AnsiColor color)
     {
         return AnsiColors.TryGetByName(token, out color);
+    }
+
+    private static Dictionary<string, AnsiStyle>? CreateCustomStyles(Dictionary<string, AnsiStyle>? customStyles)
+    {
+        if (customStyles is null || customStyles.Count == 0)
+        {
+            return null;
+        }
+
+        var stylesByName = new Dictionary<string, AnsiStyle>(customStyles.Count, StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, value) in customStyles)
+        {
+            if (!string.IsNullOrWhiteSpace(key))
+            {
+                stylesByName[key] = value;
+            }
+        }
+
+        return stylesByName.Count == 0 ? null : stylesByName;
+    }
+
+    private static bool TryGetCustomStyleToken(
+        Dictionary<string, AnsiStyle>? customStylesByName,
+        Dictionary<string, AnsiStyle>.AlternateLookup<ReadOnlySpan<char>> customStylesByNameSpan,
+        ReadOnlySpan<char> token,
+        out AnsiStyle style)
+    {
+        if (customStylesByName is null)
+        {
+            style = default;
+            return false;
+        }
+
+        if (customStylesByNameSpan.TryGetValue(token, out style))
+        {
+            return true;
+        }
+
+        if (!ContainsSeparators(token))
+        {
+            style = default;
+            return false;
+        }
+
+        Span<char> normalizedBuffer = stackalloc char[token.Length];
+        var normalized = RemoveSeparators(token, normalizedBuffer);
+        if (normalized.IsEmpty)
+        {
+            style = default;
+            return false;
+        }
+
+        return customStylesByNameSpan.TryGetValue(normalized, out style);
+    }
+
+    private static void ApplyCustomStyleToken(ref AnsiStyle nextStyle, AnsiStyle customStyle)
+    {
+        if (customStyle.Foreground is { } fg)
+        {
+            nextStyle = nextStyle with { Foreground = fg };
+        }
+
+        if (customStyle.Background is { } bg)
+        {
+            nextStyle = nextStyle with { Background = bg };
+        }
+
+        if (customStyle.Decorations != AnsiDecorations.None)
+        {
+            nextStyle = nextStyle with { Decorations = nextStyle.Decorations | customStyle.Decorations };
+        }
+    }
+
+    private static bool ContainsSeparators(ReadOnlySpan<char> token)
+    {
+        for (var i = 0; i < token.Length; i++)
+        {
+            var c = token[i];
+            if (c == '-' || c == '_')
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static ReadOnlySpan<char> RemoveSeparators(ReadOnlySpan<char> token, Span<char> destination)
+    {
+        var length = 0;
+        for (var i = 0; i < token.Length; i++)
+        {
+            var c = token[i];
+            if (c == '-' || c == '_')
+            {
+                continue;
+            }
+
+            destination[length++] = c;
+        }
+
+        return destination[..length];
     }
 
     private static bool TryReadToken(ReadOnlySpan<char> text, ref int index, out ReadOnlySpan<char> token)

@@ -186,6 +186,25 @@ var s = AnsiMarkup.Render($"[red]{userInput}[/]");
 - 256-color indexed: `0..255` (foreground), `bg:0..255` (background)
 - Truecolor: `#RRGGBB` or `rgb(r,g,b)` (foreground), and `bg:#RRGGBB` (background)
 
+### Custom tokens
+
+You can provide a custom token dictionary (e.g. `[primary]`, `[success]`, `[error]`) by passing a `Dictionary<string,AnsiStyle>` to `AnsiMarkup`.
+Token lookup is case-insensitive and avoids per-token string allocations.
+
+```csharp
+var tokens = new Dictionary<string, AnsiStyle>(StringComparer.OrdinalIgnoreCase)
+{
+    ["primary"] = new AnsiStyle { Foreground = AnsiColors.Web.CornflowerBlue },
+    ["error"]   = new AnsiStyle { Foreground = AnsiColors.BrightRed, Decorations = AnsiDecorations.Bold },
+};
+
+using var builder = new AnsiBuilder();
+var w = new AnsiWriter(builder);
+var m = new AnsiMarkup(w, tokens);
+
+m.Write("[primary]info[/] [error]boom[/]");
+```
+
 ## Parsing input with `AnsiTokenizer`
 
 `AnsiTokenizer` parses a stream into tokens:
