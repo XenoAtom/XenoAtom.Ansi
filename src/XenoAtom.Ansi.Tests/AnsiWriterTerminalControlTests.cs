@@ -119,4 +119,39 @@ public class AnsiWriterTerminalControlTests
         Assert.AreEqual('?', decrst.PrivateMarker);
         CollectionAssert.AreEqual(new[] { 2004 }, decrst.Parameters);
     }
+
+    [TestMethod]
+    public void SupportsPrivateModes_DefaultsToTrue()
+    {
+        Assert.IsTrue(AnsiCapabilities.Default.SupportsPrivateModes);
+        Assert.IsTrue(new AnsiCapabilities().SupportsPrivateModes);
+    }
+
+    [TestMethod]
+    public void PrivateModeControls_AreNoOp_WhenPrivateModesAreNotSupported()
+    {
+        var caps = AnsiCapabilities.Default with { SupportsPrivateModes = false };
+
+        var output = AnsiRoundTrip.Emit(w =>
+        {
+            w.PrivateMode(2004, enabled: true);
+            w.PrivateMode(2004, enabled: false);
+            w.CursorKeysApplicationMode(enabled: true);
+            w.CursorKeysApplicationMode(enabled: false);
+            w.CursorBlinking(enabled: true);
+            w.CursorBlinking(enabled: false);
+            w.Columns132(enabled: true);
+            w.Columns132(enabled: false);
+            w.ShowCursor(visible: false);
+            w.ShowCursor(visible: true);
+            w.CursorVisible(visible: false);
+            w.CursorVisible(visible: true);
+            w.EnterAlternateScreen();
+            w.LeaveAlternateScreen();
+            w.AlternateScreen(enabled: true);
+            w.AlternateScreen(enabled: false);
+        }, caps);
+
+        Assert.AreEqual(string.Empty, output);
+    }
 }

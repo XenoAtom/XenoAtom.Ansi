@@ -63,6 +63,7 @@ var caps = AnsiCapabilities.Default with
     AnsiEnabled = true,
     ColorLevel = AnsiColorLevel.Colors256,
     SupportsOsc8 = false,
+    SupportsPrivateModes = false,
 };
 
 using var builder = new AnsiBuilder();
@@ -70,6 +71,7 @@ var w = new AnsiWriter(builder, caps);
 ```
 
 If `AnsiEnabled` is `false`, style/cursor/hyperlink methods become no-ops (text still writes).
+If `SupportsPrivateModes` is `false`, DEC private-mode helpers (for example `CursorVisible(...)`, `AlternateScreen(...)`, `PrivateMode(...)`) become no-ops.
 
 ### Colors and decorations
 
@@ -362,6 +364,8 @@ Decoration parameters used by `Decorate(...)` / `Undecorate(...)`:
 | `ClearAllTabStops()` | `ESC[3g` | TBC (all columns) |
 
 #### DEC private modes (CSI with `?`)
+
+These helpers emit sequences only when `AnsiCapabilities.SupportsPrivateModes` is `true`.
 
 | API | Emits | Notes |
 |---|---|---|

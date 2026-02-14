@@ -877,7 +877,7 @@ public partial class AnsiWriter : IAnsiBasicWriter
     /// <returns>This writer, for fluent chaining.</returns>
     public AnsiWriter PrivateMode(int mode, bool enabled)
     {
-        if (!Capabilities.AnsiEnabled)
+        if (!CanEmitPrivateModes())
         {
             return this;
         }
@@ -931,13 +931,7 @@ public partial class AnsiWriter : IAnsiBasicWriter
     /// <returns>This writer, for fluent chaining.</returns>
     public AnsiWriter ShowCursor(bool visible)
     {
-        if (!Capabilities.AnsiEnabled)
-        {
-            return this;
-        }
-
-        Write(visible ? "\x1b[?25h" : "\x1b[?25l");
-        return this;
+        return PrivateMode(25, visible);
     }
 
     /// <summary>
@@ -953,13 +947,7 @@ public partial class AnsiWriter : IAnsiBasicWriter
     /// <returns>This writer, for fluent chaining.</returns>
     public AnsiWriter EnterAlternateScreen()
     {
-        if (!Capabilities.AnsiEnabled)
-        {
-            return this;
-        }
-
-        Write("\x1b[?1049h");
-        return this;
+        return PrivateMode(1049, enabled: true);
     }
 
     /// <summary>
@@ -968,13 +956,7 @@ public partial class AnsiWriter : IAnsiBasicWriter
     /// <returns>This writer, for fluent chaining.</returns>
     public AnsiWriter LeaveAlternateScreen()
     {
-        if (!Capabilities.AnsiEnabled)
-        {
-            return this;
-        }
-
-        Write("\x1b[?1049l");
-        return this;
+        return PrivateMode(1049, enabled: false);
     }
 
     /// <summary>
@@ -1183,6 +1165,8 @@ public partial class AnsiWriter : IAnsiBasicWriter
         WriteInt(n == 0 ? 1 : n);
         WriteChar(final);
     }
+
+    private bool CanEmitPrivateModes() => Capabilities.AnsiEnabled && Capabilities.SupportsPrivateModes;
 
     private void WriteSgr(string parameters)
     {

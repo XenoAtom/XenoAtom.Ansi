@@ -22,6 +22,7 @@ public record AnsiCapabilities
         AnsiEnabled = true,
         ColorLevel = AnsiColorLevel.TrueColor,
         SupportsOsc8 = true,
+        SupportsPrivateModes = true,
         Prefer7BitC1 = true,
         SafeMode = false,
         OscTermination = AnsiOscTermination.StringTerminator,
@@ -41,6 +42,11 @@ public record AnsiCapabilities
     /// Gets a value indicating whether OSC 8 hyperlinks should be emitted.
     /// </summary>
     public bool SupportsOsc8 { get; init; }
+
+    /// <summary>
+    /// Gets a value indicating whether DEC private mode sequences (<c>CSI ? ...</c>) should be emitted.
+    /// </summary>
+    public bool SupportsPrivateModes { get; init; } = true;
 
     /// <summary>
     /// Gets a value indicating whether the output should prefer 7-bit escape sequences (e.g. <c>ESC [</c>)

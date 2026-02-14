@@ -12,7 +12,7 @@ XenoAtom.Ansi is a fast, allocation-friendly .NET library for building rich ANSI
   - `AnsiWriter` fluent API (writes to `TextWriter` or `IBufferWriter<char>`)
   - `AnsiMarkup` for markup strings, including interpolated strings (formatted values are escaped)
   - SGR styling: colors (basic-16, 256-color, truecolor RGB), decorations (bold/dim/italic/underline/etc), reset
-  - Capability-aware output (`AnsiCapabilities`) including color downgrading and optional safe-mode behavior
+  - Capability-aware output (`AnsiCapabilities`) including color downgrading, private-mode gating, and optional safe-mode behavior
   - Cursor/screen helpers (ANSI/DEC/xterm/Windows Terminal): move/position, save/restore, erase (incl. scrollback), insert/delete chars/lines, scrolling + scroll regions, cursor style, mode toggles, tabs, alternate screen, soft reset
   - OSC helpers with configurable terminator (BEL or ST): window title (OSC 0/2), palette edits (OSC 4), hyperlinks (OSC 8)
 - **Parsing**
