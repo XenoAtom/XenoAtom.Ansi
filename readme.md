@@ -14,10 +14,11 @@ XenoAtom.Ansi is a fast, allocation-friendly .NET library for building rich ANSI
   - SGR styling: colors (basic-16, 256-color, truecolor RGB), decorations (bold/dim/italic/underline/etc), reset
   - Capability-aware output (`AnsiCapabilities`) including color downgrading, private-mode gating, and optional safe-mode behavior
   - Cursor/screen helpers (ANSI/DEC/xterm/Windows Terminal): move/position, save/restore, erase (incl. scrollback), insert/delete chars/lines, scrolling + scroll regions, cursor style, mode toggles, tabs, alternate screen, soft reset
-  - OSC helpers with configurable terminator (BEL or ST): window title (OSC 0/2), palette edits (OSC 4), hyperlinks (OSC 8)
+  - OSC helpers with configurable terminator (BEL or ST): generic OSC, window title (OSC 0/2), palette edits (OSC 4), hyperlinks (OSC 8)
+  - Low-level terminal string control/protocol framing helpers: DCS, SOS, PM, APC, Kitty graphics APC, iTerm2 image OSC 1337, and Sixel DCS payload wrappers
 - **Parsing**
   - Streaming ANSI/VT tokenizer (`AnsiTokenizer`) with chunked parsing support (ESC and 8-bit C1 forms)
-  - Token model for Text, selected controls, ESC, CSI, OSC, decoded SGR, and malformed/unknown sequences (tolerant; never throws)
+  - Token model for Text, selected controls, ESC, CSI, OSC, DCS/SOS/PM/APC string controls, decoded SGR, and malformed/unknown sequences (tolerant; never throws)
   - Input interpretation helpers for keys, mouse (SGR), and cursor position reports (CPR)
   - Styled runs parser (`AnsiStyledTextParser`) that interprets SGR + OSC 8 into `AnsiStyle`/hyperlink runs
 - **Text Utilities**

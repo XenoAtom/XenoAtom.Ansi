@@ -1014,6 +1014,123 @@ public partial class AnsiWriter : IAnsiBasicWriter
     }
 
     /// <summary>
+    /// Emits a generic OSC (Operating System Command) string using the configured OSC terminator.
+    /// </summary>
+    /// <param name="code">The numeric OSC code.</param>
+    /// <param name="payload">The OSC payload after the first semicolon.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="code"/> is negative.</exception>
+    /// <exception cref="ArgumentException"><paramref name="payload"/> contains unsafe control characters.</exception>
+    public AnsiWriter WriteOsc(int code, ReadOnlySpan<char> payload) => WriteOsc(code, payload, Capabilities.OscTermination);
+
+    /// <summary>
+    /// Emits a generic OSC (Operating System Command) string using the specified OSC terminator.
+    /// </summary>
+    /// <param name="code">The numeric OSC code.</param>
+    /// <param name="payload">The OSC payload after the first semicolon.</param>
+    /// <param name="terminator">The OSC terminator to emit.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="code"/> is negative.</exception>
+    /// <exception cref="ArgumentException"><paramref name="payload"/> contains unsafe control characters.</exception>
+    public AnsiWriter WriteOsc(int code, ReadOnlySpan<char> payload, AnsiOscTermination terminator)
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        ArgumentOutOfRangeException.ThrowIfNegative(code);
+        AnsiStringControlValidation.ThrowIfUnsafePayload(payload, nameof(payload));
+
+        Write("\x1b]");
+        WriteInt(code);
+        WriteChar(';');
+        Write(payload);
+        WriteOscTerminatorCore(terminator);
+        return this;
+    }
+
+    /// <summary>
+    /// Emits a DCS (Device Control String) using ST (<c>ESC \</c>) termination.
+    /// </summary>
+    /// <param name="payload">The DCS payload after <c>ESC P</c>.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    /// <exception cref="ArgumentException"><paramref name="payload"/> contains unsafe control characters.</exception>
+    public AnsiWriter WriteDcs(ReadOnlySpan<char> payload)
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        AnsiStringControlValidation.ThrowIfUnsafePayload(payload, nameof(payload));
+        Write("\x1bP");
+        Write(payload);
+        WriteStringTerminatorCore();
+        return this;
+    }
+
+    /// <summary>
+    /// Emits a SOS (Start Of String) using ST (<c>ESC \</c>) termination.
+    /// </summary>
+    /// <param name="payload">The SOS payload after <c>ESC X</c>.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    /// <exception cref="ArgumentException"><paramref name="payload"/> contains unsafe control characters.</exception>
+    public AnsiWriter WriteSos(ReadOnlySpan<char> payload)
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        AnsiStringControlValidation.ThrowIfUnsafePayload(payload, nameof(payload));
+        Write("\x1bX");
+        Write(payload);
+        WriteStringTerminatorCore();
+        return this;
+    }
+
+    /// <summary>
+    /// Emits a PM (Privacy Message) using ST (<c>ESC \</c>) termination.
+    /// </summary>
+    /// <param name="payload">The PM payload after <c>ESC ^</c>.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    /// <exception cref="ArgumentException"><paramref name="payload"/> contains unsafe control characters.</exception>
+    public AnsiWriter WritePm(ReadOnlySpan<char> payload)
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        AnsiStringControlValidation.ThrowIfUnsafePayload(payload, nameof(payload));
+        Write("\x1b^");
+        Write(payload);
+        WriteStringTerminatorCore();
+        return this;
+    }
+
+    /// <summary>
+    /// Emits an APC (Application Program Command) using ST (<c>ESC \</c>) termination.
+    /// </summary>
+    /// <param name="payload">The APC payload after <c>ESC _</c>.</param>
+    /// <returns>This writer, for fluent chaining.</returns>
+    /// <exception cref="ArgumentException"><paramref name="payload"/> contains unsafe control characters.</exception>
+    public AnsiWriter WriteApc(ReadOnlySpan<char> payload)
+    {
+        if (!Capabilities.AnsiEnabled)
+        {
+            return this;
+        }
+
+        AnsiStringControlValidation.ThrowIfUnsafePayload(payload, nameof(payload));
+        Write("\x1b_");
+        Write(payload);
+        WriteStringTerminatorCore();
+        return this;
+    }
+
+    /// <summary>
     /// Sets the window title (OSC 2) (<c>ESC ] 2 ; string ST</c>).
     /// </summary>
     /// <param name="title">The window title string (Windows Console traditionally limits it to &lt; 255 characters).</param>
@@ -1027,7 +1144,7 @@ public partial class AnsiWriter : IAnsiBasicWriter
 
         Write("\x1b]2;");
         Write(title);
-        WriteOscTerminator(Capabilities);
+        WriteOscTerminatorCore(Capabilities.OscTermination);
         return this;
     }
 
@@ -1045,7 +1162,7 @@ public partial class AnsiWriter : IAnsiBasicWriter
 
         Write("\x1b]0;");
         Write(title);
-        WriteOscTerminator(Capabilities);
+        WriteOscTerminatorCore(Capabilities.OscTermination);
         return this;
     }
 
@@ -1074,7 +1191,7 @@ public partial class AnsiWriter : IAnsiBasicWriter
         WriteHexByte(g);
         WriteChar('/');
         WriteHexByte(b);
-        WriteOscTerminator(Capabilities);
+        WriteOscTerminatorCore(Capabilities.OscTermination);
         return this;
     }
 
@@ -1102,7 +1219,7 @@ public partial class AnsiWriter : IAnsiBasicWriter
 
         Write(";");
         Write(uri);
-        WriteOscTerminator(Capabilities);
+        WriteOscTerminatorCore(Capabilities.OscTermination);
         return this;
     }
 
@@ -1118,24 +1235,29 @@ public partial class AnsiWriter : IAnsiBasicWriter
         }
 
         Write("\x1b]8;;");
-        WriteOscTerminator(Capabilities);
+        WriteOscTerminatorCore(Capabilities.OscTermination);
         return this;
     }
 
-    private void WriteOscTerminator(AnsiCapabilities capabilities)
+    internal void WriteOscTerminatorCore(AnsiOscTermination terminator)
     {
-        switch (capabilities.OscTermination)
+        switch (terminator)
         {
             case AnsiOscTermination.Bell:
                 Write("\x07");
                 break;
             case AnsiOscTermination.StringTerminator:
-                Write("\x1b\\");
+                WriteStringTerminatorCore();
                 break;
             default:
-                Write("\x1b\\");
+                WriteStringTerminatorCore();
                 break;
         }
+    }
+
+    internal void WriteStringTerminatorCore()
+    {
+        Write("\x1b\\");
     }
 
     private void WriteHexByte(byte value)

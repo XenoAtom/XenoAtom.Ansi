@@ -157,6 +157,26 @@ If `SupportsOsc8` is enabled, you can emit hyperlinks:
 w.BeginLink("https://example.com").Write("click here").EndLink();
 ```
 
+### Terminal string controls and graphics protocol framing
+
+For higher-level terminal graphics packages, `AnsiWriter` also exposes safe low-level string-control writers. These methods only frame already-prepared payloads; they do not decode images, resize rasters, quantize colors, or encode Sixel data.
+
+```csharp
+w.WriteOsc(1337, "File=inline=1:...base64...".AsSpan());
+w.WriteDcs("0;1q...sixel payload...".AsSpan());
+w.WriteApc("Gf=100;...base64...".AsSpan());
+```
+
+Protocol-specific framing helpers are available for common image transports:
+
+```csharp
+AnsiKittyGraphicsSequences.WriteCommand(w, "a=T,f=100".AsSpan(), "...base64...".AsSpan());
+AnsiIterm2ImageSequences.WriteFile(w, "inline=1;width=10".AsSpan(), "...base64...".AsSpan());
+AnsiSixelSequences.WriteImage(w, "0;1".AsSpan(), "...sixel payload...".AsSpan());
+```
+
+The generic/protocol helpers reject C0/C1 control characters in payloads and reject framing characters in protocol parameters so untrusted filenames, metadata, or payload strings cannot accidentally terminate the surrounding OSC/DCS/APC sequence.
+
 ## Markup with `AnsiMarkup`
 
 If you prefer authoring styled output as a single string, `AnsiMarkup` can parse a simple markup syntax and emit the corresponding ANSI sequences (using `AnsiWriter` under the hood).
@@ -217,6 +237,7 @@ m.Write("[primary]info[/] [error]boom[/]");
 - `CsiToken`: syntactic CSI tokens (parameters + intermediates + final)
 - `SgrToken`: decoded SGR operations (a decoded `CSI ... m`)
 - `OscToken`: parsed OSC code + data
+- `AnsiStringControlToken`: parsed DCS/SOS/PM/APC kind + data
 - `UnknownEscapeToken`: malformed/unsupported sequences (never throws)
 
 Example:
@@ -406,11 +427,27 @@ These helpers emit sequences only when `AnsiCapabilities.SupportsPrivateModes` i
 | `SetPaletteColor(i,r,g,b)` | `ESC]4;<i>;rgb:<rr>/<gg>/<bb>` + terminator | OSC 4 palette entry |
 | `BeginLink(uri, id)` | `ESC]8;id=<id>;<uri>` + terminator | OSC 8 hyperlink (id is optional) |
 | `EndLink()` | `ESC]8;;` + terminator | Ends OSC 8 hyperlink |
+| `WriteOsc(code,payload)` | `ESC]<code>;<payload>` + terminator | Generic safe OSC writer |
 
 | `AnsiCapabilities.OscTermination` | Terminator emitted |
 |---|---|
 | `AnsiOscTermination.StringTerminator` | `ESC\` (ST) |
 | `AnsiOscTermination.Bell` | `BEL` (`\x07`) |
+
+#### Terminal string controls and graphics protocol framing
+
+| API | Emits | Notes |
+|---|---|---|
+| `WriteDcs(payload)` | `ESC P <payload> ESC\\` | Generic DCS writer |
+| `WriteSos(payload)` | `ESC X <payload> ESC\\` | Generic SOS writer |
+| `WritePm(payload)` | `ESC ^ <payload> ESC\\` | Generic PM writer |
+| `WriteApc(payload)` | `ESC _ <payload> ESC\\` | Generic APC writer |
+| `AnsiKittyGraphicsSequences.WriteCommand(...)` | `ESC _ G ... ESC\\` | Kitty graphics APC framing for prepared parameters/base64 payloads |
+| `AnsiKittyGraphicsSequences.WriteCommandChunks(...)` | Multiple `ESC _ G ... m=... ; chunk ESC\\` commands | Adds Kitty `m=1`/`m=0` chunk flags |
+| `AnsiIterm2ImageSequences.WriteFile(...)` | `ESC]1337;File=...:<payload>` + terminator | iTerm2 inline image OSC framing |
+| `AnsiSixelSequences.WriteImage(...)` | `ESC P <params> q <payload> ESC\\` | Sixel DCS framing for an already-encoded Sixel payload |
+
+These helpers are deliberately low-level and dependency-free. They do not decode image files, resize images, quantize palettes, or produce Sixel raster data.
 
 ### Reading support (`AnsiTokenizer`)
 
@@ -428,6 +465,8 @@ The tokenizer is designed to be streaming and tolerant: it never throws on malfo
 | `ESC ]` ... | `OscToken` | OSC code + data |
 | `CSI` (`0x9B`) ... | `CsiToken` or `SgrToken` | Also supports 8-bit C1 CSI |
 | `OSC` (`0x9D`) ... | `OscToken` | Also supports 8-bit C1 OSC |
+| `ESC P` / `ESC X` / `ESC ^` / `ESC _` ... `ST` | `AnsiStringControlToken` | DCS/SOS/PM/APC string controls |
+| DCS/SOS/PM/APC C1 forms (`0x90`/`0x98`/`0x9E`/`0x9F`) ... `ST` | `AnsiStringControlToken` | Also supports 8-bit C1 string controls |
 | Malformed/unsupported/over-limit | `UnknownEscapeToken` | Best-effort recovery; never throws |
 
 #### ESC handling
@@ -437,7 +476,7 @@ The tokenizer is designed to be streaming and tolerant: it never throws on malfo
 | `ESC [` | Starts CSI | CSI grammar: parameters (`0x30..0x3F`) + intermediates (`0x20..0x2F`) + final (`0x40..0x7E`) |
 | `ESC ]` | Starts OSC | OSC terminates with `BEL` (`\x07`) or `ST` (`ESC\`) |
 | `ESC O` | `Ss3Token` | SS3 used for input keys (e.g. `ESC O A` for Up in application mode) |
-| `ESC P` / `ESC X` / `ESC ^` / `ESC _` | Skipped until `ST` | DCS/SOS/PM/APC “string” functions are not decoded; emitted as `UnknownEscapeToken` |
+| `ESC P` / `ESC X` / `ESC ^` / `ESC _` | `AnsiStringControlToken` | DCS/SOS/PM/APC “string” functions; payload is captured syntactically through `ST` |
 | Other `ESC` sequences | `EscToken` | Examples: `ESC7`, `ESC8`, `ESC\` |
 
 #### CSI token capture (`CsiToken`)
@@ -475,6 +514,17 @@ For test and host scenarios, `AnsiWriter` also provides helper instance methods 
 | `39` / `49` | Reset fg/bg to default | `SetForeground(Default)` / `SetBackground(Default)` |
 | `38;5;<n>` / `48;5;<n>` | 256-color indexed fg/bg | `SetForeground(Indexed256(n))` / `SetBackground(Indexed256(n))` |
 | `38;2;<r>;<g>;<b>` / `48;2;<r>;<g>;<b>` | Truecolor fg/bg | `SetForeground(Rgb(...))` / `SetBackground(Rgb(...))` |
+
+#### String control parsing (`AnsiStringControlToken`)
+
+| Input form | Parsed fields |
+|---|---|
+| `ESC P <data> ST` or C1 `0x90 <data> ST` | `Kind == Dcs`, `Data` excludes introducer and terminator |
+| `ESC X <data> ST` or C1 `0x98 <data> ST` | `Kind == Sos`, `Data` excludes introducer and terminator |
+| `ESC ^ <data> ST` or C1 `0x9E <data> ST` | `Kind == Pm`, `Data` excludes introducer and terminator |
+| `ESC _ <data> ST` or C1 `0x9F <data> ST` | `Kind == Apc`, `Data` excludes introducer and terminator |
+
+`AnsiStringControlToken` is intentionally syntactic. Protocol-specific payloads such as terminal graphics commands should be interpreted by higher-level code. `AnsiKittyGraphicsSequences.TryParseReply(...)` can parse the common Kitty graphics APC reply shape into `AnsiKittyGraphicsReply` for probe coordination.
 
 #### OSC parsing (`OscToken`)
 

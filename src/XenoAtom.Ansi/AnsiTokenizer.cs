@@ -48,8 +48,8 @@ public sealed class AnsiTokenizer : IDisposable
         Csi = 4,
         Osc = 5,
         OscMaybeSt = 6,
-        DcsOrIgnored = 7,
-        DcsOrIgnoredMaybeSt = 8,
+        StringControl = 7,
+        StringControlMaybeSt = 8,
     }
 
     private State _state;
@@ -58,6 +58,7 @@ public sealed class AnsiTokenizer : IDisposable
     private readonly PooledCharBuffer _csiIntermediateBuffer = new(16);
     private readonly PooledCharBuffer _escIntermediateBuffer = new(8);
     private char? _csiPrivateMarker;
+    private AnsiStringControlKind _stringControlKind;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AnsiTokenizer"/> class.
@@ -84,6 +85,7 @@ public sealed class AnsiTokenizer : IDisposable
         _csiIntermediateBuffer.Clear();
         _escIntermediateBuffer.Clear();
         _csiPrivateMarker = null;
+        _stringControlKind = AnsiStringControlKind.Dcs;
     }
 
     /// <summary>
@@ -159,9 +161,10 @@ public sealed class AnsiTokenizer : IDisposable
                     // - CSI: 0x9B
                     // - OSC: 0x9D
                     // - DCS: 0x90
+                    // - SOS: 0x98
                     // - PM:  0x9E
                     // - APC: 0x9F
-                    if (c is '\x9b' or '\x9d' or '\x90' or '\x9e' or '\x9f')
+                    if (c is '\x9b' or '\x9d' or '\x90' or '\x98' or '\x9e' or '\x9f')
                     {
                         FlushText(chunk, ref textStart, i, tokens);
                         _escapeBuffer.Clear();
@@ -180,7 +183,8 @@ public sealed class AnsiTokenizer : IDisposable
                         }
                         else
                         {
-                            _state = State.DcsOrIgnored;
+                            _stringControlKind = GetC1StringControlKind(c);
+                            _state = State.StringControl;
                         }
 
                         i++;
@@ -235,7 +239,8 @@ public sealed class AnsiTokenizer : IDisposable
                     if (c is 'P' or 'X' or '^' or '_')
                     {
                         _escapeBuffer.Append(c);
-                        _state = State.DcsOrIgnored;
+                        _stringControlKind = GetEscStringControlKind(c);
+                        _state = State.StringControl;
                         i++;
                         textStart = i;
                         continue;
@@ -467,9 +472,9 @@ public sealed class AnsiTokenizer : IDisposable
                     textStart = i;
                     continue;
 
-                case State.DcsOrIgnored:
+                case State.StringControl:
                     // DCS/APC/PM/SOS are "string" functions in ECMA-48 which are terminated by ST (ESC \).
-                    // This library does not decode these; we skip until ST and surface the buffered sequence as UnknownEscapeToken.
+                    // We keep the payload syntactic and leave protocol-specific decoding to higher layers.
                     _escapeBuffer.Append(c);
                     if (_escapeBuffer.Length > Options.MaxEscapeSequenceLength)
                     {
@@ -482,7 +487,7 @@ public sealed class AnsiTokenizer : IDisposable
 
                     if (c == '\x1b')
                     {
-                        _state = State.DcsOrIgnoredMaybeSt;
+                        _state = State.StringControlMaybeSt;
                         i++;
                         textStart = i;
                         continue;
@@ -490,7 +495,7 @@ public sealed class AnsiTokenizer : IDisposable
 
                     if (c == '\x9c')
                     {
-                        tokens.Add(new UnknownEscapeToken(_escapeBuffer.ToStringAndClear()));
+                        EmitStringControlToken(tokens, _escapeBuffer.ToStringAndClear(), _stringControlKind);
                         _state = State.Ground;
                         i++;
                         textStart = i;
@@ -501,19 +506,19 @@ public sealed class AnsiTokenizer : IDisposable
                     textStart = i;
                     continue;
 
-                case State.DcsOrIgnoredMaybeSt:
+                case State.StringControlMaybeSt:
                     // We saw ESC inside DCS/APC/PM/SOS; '\'? indicates ST (ESC \) terminator.
                     _escapeBuffer.Append(c);
                     if (c == '\\')
                     {
-                        tokens.Add(new UnknownEscapeToken(_escapeBuffer.ToStringAndClear()));
+                        EmitStringControlToken(tokens, _escapeBuffer.ToStringAndClear(), _stringControlKind);
                         _state = State.Ground;
                         i++;
                         textStart = i;
                         continue;
                     }
 
-                    _state = State.DcsOrIgnored;
+                    _state = State.StringControl;
                     i++;
                     textStart = i;
                     continue;
@@ -628,6 +633,48 @@ public sealed class AnsiTokenizer : IDisposable
         }
 
         return list.ToArray();
+    }
+
+    private static AnsiStringControlKind GetEscStringControlKind(char introducer) => introducer switch
+    {
+        'P' => AnsiStringControlKind.Dcs,
+        'X' => AnsiStringControlKind.Sos,
+        '^' => AnsiStringControlKind.Pm,
+        '_' => AnsiStringControlKind.Apc,
+        _ => AnsiStringControlKind.Dcs,
+    };
+
+    private static AnsiStringControlKind GetC1StringControlKind(char introducer) => introducer switch
+    {
+        '\x90' => AnsiStringControlKind.Dcs,
+        '\x98' => AnsiStringControlKind.Sos,
+        '\x9e' => AnsiStringControlKind.Pm,
+        '\x9f' => AnsiStringControlKind.Apc,
+        _ => AnsiStringControlKind.Dcs,
+    };
+
+    private static void EmitStringControlToken(List<AnsiToken> tokens, string raw, AnsiStringControlKind kind)
+    {
+        ReadOnlySpan<char> payload;
+        if (raw.Length > 0 && raw[0] is '\x90' or '\x98' or '\x9e' or '\x9f')
+        {
+            payload = raw.AsSpan(1);
+        }
+        else
+        {
+            payload = raw.AsSpan(2);
+        }
+
+        if (payload.Length > 0 && payload[^1] == '\x9c')
+        {
+            payload = payload[..^1];
+        }
+        else if (payload.Length >= 2 && payload[^2] == '\x1b' && payload[^1] == '\\')
+        {
+            payload = payload[..^2];
+        }
+
+        tokens.Add(new AnsiStringControlToken(kind, payload.ToString(), raw));
     }
 
     private static void EmitOscToken(List<AnsiToken> tokens, string raw)
