@@ -47,6 +47,21 @@ public class AnsiInputParsingTests
     }
 
     [TestMethod]
+    public void KeyEvent_CtrlArrow_WithKittyLockBits_PreservesControl()
+    {
+        using var tokenizer = new AnsiTokenizer();
+        var tokens = tokenizer.Tokenize("\x1b[1;133C\x1b[1;69D".AsSpan(), isFinalChunk: true);
+
+        Assert.HasCount(2, tokens);
+        Assert.IsTrue(tokens[0].TryGetKeyEvent(out var right));
+        Assert.AreEqual(AnsiKey.Right, right.Key);
+        Assert.AreEqual(AnsiKeyModifiers.Control, right.Modifiers);
+        Assert.IsTrue(tokens[1].TryGetKeyEvent(out var left));
+        Assert.AreEqual(AnsiKey.Left, left.Key);
+        Assert.AreEqual(AnsiKeyModifiers.Control, left.Modifiers);
+    }
+
+    [TestMethod]
     public void KeyEvent_Escape_ParsesFromUnknownEscapeToken()
     {
         var token = AnsiRoundTrip.EmitAndTokenize(w => w.WriteKeyEvent(new AnsiKeyEvent(AnsiKey.Escape))).Single();

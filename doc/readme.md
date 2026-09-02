@@ -510,6 +510,8 @@ While `AnsiTokenizer` is primarily syntactic, it can also be used to decode comm
 - `CsiToken.TryGetSgrMouseEvent(out AnsiMouseEvent)` for SGR mouse (`ESC[<b;x;yM/m`)
 - `AnsiToken.TryGetKeyEvent(out AnsiKeyEvent)` for common key sequences (arrows, Home/End, Insert/Delete, F1–F12, etc.)
 
+For xterm-style key sequences, recognized Shift, Alt, and Control modifiers are preserved when terminals such as Kitty also report Caps Lock or Num Lock state.
+
 For test and host scenarios, `AnsiWriter` also provides helper instance methods to emit these input sequences.
 | `39` / `49` | Reset fg/bg to default | `SetForeground(Default)` / `SetBackground(Default)` |
 | `38;5;<n>` / `48;5;<n>` | 256-color indexed fg/bg | `SetForeground(Indexed256(n))` / `SetBackground(Indexed256(n))` |
