@@ -310,17 +310,19 @@ public static class AnsiInputTokenExtensions
 
     private static AnsiKeyModifiers DecodeXtermModifierValue(int m)
     {
-        // 1 means no modifiers; others map as described above.
-        return m switch
+        // The parameter is 1 plus a bit field. Xterm defines the low three bits;
+        // Kitty can additionally report lock state in bits 6 and 7. Ignore bits
+        // this API does not expose rather than dropping the modifiers we do know.
+        if (m < 1)
         {
-            2 => AnsiKeyModifiers.Shift,
-            3 => AnsiKeyModifiers.Alt,
-            4 => AnsiKeyModifiers.Shift | AnsiKeyModifiers.Alt,
-            5 => AnsiKeyModifiers.Control,
-            6 => AnsiKeyModifiers.Shift | AnsiKeyModifiers.Control,
-            7 => AnsiKeyModifiers.Alt | AnsiKeyModifiers.Control,
-            8 => AnsiKeyModifiers.Shift | AnsiKeyModifiers.Alt | AnsiKeyModifiers.Control,
-            _ => AnsiKeyModifiers.None,
-        };
+            return AnsiKeyModifiers.None;
+        }
+
+        var bits = m - 1;
+        var modifiers = AnsiKeyModifiers.None;
+        if ((bits & 1) != 0) modifiers |= AnsiKeyModifiers.Shift;
+        if ((bits & 2) != 0) modifiers |= AnsiKeyModifiers.Alt;
+        if ((bits & 4) != 0) modifiers |= AnsiKeyModifiers.Control;
+        return modifiers;
     }
 }
